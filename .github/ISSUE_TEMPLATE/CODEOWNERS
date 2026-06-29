@@ -1,0 +1,5 @@
+# Владелец кода, чей апрув обязателен на любой PR
+*       @Shturmill
+
+# Принадлежность файла
+/.github/CODEOWNERS  @Shturmill
