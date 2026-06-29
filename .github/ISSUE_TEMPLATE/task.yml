@@ -1,0 +1,89 @@
+name: "Задача"
+description: "Рабочая задача внутри эпика (feature, рефакторинг, инфраструктура)."
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что заводишь задачу по шаблону.
+
+  - type: dropdown
+    id: epic
+    attributes:
+      label: Эпик
+      description: К какому эпику относится задача.
+      options:
+        - Инфраструктура
+        - Auth & Users
+        - Skills
+        - Tasks
+        - Experience
+        - Frontend
+        - QA & Docs
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Слой / компонент
+      description: Какой слой затрагивается (можно ориентировочно).
+      options:
+        - API (router)
+        - Service
+        - Repository
+        - Models (SQLAlchemy)
+        - Schemas (Pydantic)
+        - Frontend
+        - Инфра / CI
+        - Документация
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание
+      description: Что нужно сделать и зачем. Контекст, ссылки.
+      placeholder: |
+        Реализовать смену статуса задачи через PATCH /api/v1/tasks/{id}/status.
+        При переходе в done должен триггериться сервис начисления опыта.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Конкретные проверяемые условия готовности. Оформи как чек-лист.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      description: Что должно быть выполнено помимо самой фичи.
+      value: |
+        - [ ] Слои не протекли (нет БД в роутере, нет HTTP в сервисе)
+        - [ ] Pydantic-схемы на входе и выходе
+        - [ ] Ошибки через HTTPException (404 / 403 / 400)
+        - [ ] Миграция Alembic приложена (если менялись модели)
+        - [ ] Тесты на основной сценарий
+        - [ ] Зелёный CI (ruff + pytest)
+    validations:
+      required: false
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Зависимости / блокеры
+      description: От каких задач зависит, что должно быть готово раньше.
+      placeholder: "Зависит от #12 (модель Task)"
+    validations:
+      required: false

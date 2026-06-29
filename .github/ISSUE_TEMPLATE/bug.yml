@@ -1,0 +1,89 @@
+name: "Баг"
+description: "Сообщить о некорректном поведении (по шаблону: шаги / ожидаемо / фактически)."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Перед заведением проверь, нет ли уже такого Issue. Чем точнее шаги воспроизведения — тем быстрее починим.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Описание
+      description: Коротко, в чём проблема.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Где проявляется
+      description: Эндпоинт / слой / часть системы.
+      options:
+        - Auth
+        - Users
+        - Skills
+        - Tasks
+        - Experience / Leaderboard
+        - Frontend
+        - Инфра / docker-compose
+        - Другое
+    validations:
+      required: true
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: Эндпоинт / экран
+      description: Если применимо — конкретный URL или страница.
+      placeholder: "PATCH /api/v1/tasks/{id}/status"
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      description: Включи текст ошибки / код ответа, если есть.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи / скриншоты
+      description: Трейсбек, тело ответа, скрин. Будет отформатировано как код.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Окружение
+      placeholder: |
+        - Ветка / коммит:
+        - Локально / docker-compose:
+        - Браузер (если фронт):
+    validations:
+      required: false
