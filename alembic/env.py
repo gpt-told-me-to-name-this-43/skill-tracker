@@ -1,23 +1,24 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.core.config import settings
-from app.models.base import Base
+from app.models import Base
 
-# \/ импорт всех новых моделей в Base.metadata
-# from app.models import user, skill, task, experience
+load_dotenv()
 
 config = context.config
-config.set_main_option("sqlalchemy.url", str(settings.database_url))
+
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+
+target_metadata = Base.metadata
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-target_metadata = Base.metadata
 
 
 def do_run_migrations(connection):
