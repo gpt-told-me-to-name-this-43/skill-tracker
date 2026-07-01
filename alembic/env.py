@@ -1,23 +1,28 @@
 import asyncio
+import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.core.config import settings
-from app.models.base import Base
 
 # \/ импорт всех новых моделей в Base.metadata
-# from app.models import user, skill, task, experience
+from app.models import Base
+
+target_metadata = Base.metadata
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 config = context.config
-config.set_main_option("sqlalchemy.url", str(settings.database_url))
+
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-target_metadata = Base.metadata
 
 
 def do_run_migrations(connection):
@@ -45,3 +50,12 @@ if context.is_offline_mode():
     raise RuntimeError("Offline mode не поддерживается для async-движка")
 else:
     run_migrations_online()
+
+
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
