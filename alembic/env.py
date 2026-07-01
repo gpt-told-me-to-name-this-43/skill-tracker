@@ -1,25 +1,21 @@
 import asyncio
 import os
 from logging.config import fileConfig
-from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
-# \/ импорт всех новых моделей в Base.metadata
 from app.models import Base
-
-target_metadata = Base.metadata
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
 config = context.config
 
 config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+
+target_metadata = Base.metadata
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -50,12 +46,3 @@ if context.is_offline_mode():
     raise RuntimeError("Offline mode не поддерживается для async-движка")
 else:
     run_migrations_online()
-
-
-env_path = Path(__file__).resolve().parent.parent / ".env"
-if env_path.exists():
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip())

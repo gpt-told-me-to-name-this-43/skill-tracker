@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 
+from app.api.v1 import skills
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
-
-# from app.api.v1 import auth, users, skills, tasks  # подключатся в своих эпиках
 
 
 def create_app() -> FastAPI:
@@ -17,7 +16,7 @@ def create_app() -> FastAPI:
 
     # app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
     # app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
-    # app.include_router(skills.router, prefix="/api/v1/skills", tags=["skills"])
+    app.include_router(skills.router, prefix="/api/v1/skills", tags=["skills"])
     # app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 
     return app
