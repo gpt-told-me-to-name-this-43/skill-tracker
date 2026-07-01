@@ -8,7 +8,7 @@ from alembic import context
 from app.core.config import settings
 from app.models.base import Base
 
-# импортируй сюда всех новых моделей в Base.metadata:
+# \/ импорт всех новых моделей в Base.metadata
 # from app.models import user, skill, task, experience
 
 config = context.config

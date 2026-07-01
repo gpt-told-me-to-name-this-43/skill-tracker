@@ -1,18 +1,14 @@
 name: CI
-
 on:
   pull_request:
     branches: ["main"]
   push:
     branches: ["main"]
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   PYTHON_VERSION: "3.12"
-
 jobs:
   lint:
     name: lint
@@ -50,6 +46,8 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/app_test
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
       - name: Install Poetry
@@ -91,6 +89,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/app_test
       REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
       - name: Install Poetry
