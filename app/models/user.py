@@ -15,14 +15,14 @@ class User(Base, IntPKMixin, TimestampMixin):
     skills: Mapped[list["UserSkill"]] = relationship(back_populates="user")
 
 
-class UserSkill(Base, IntPKMixin):
+class UserSkill(Base, IntPKMixin, TimestampMixin):
     __tablename__ = "user_skills"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
     experience: Mapped[int] = mapped_column(default=0)
-    level: Mapped[int] = mapped_column(default=1)
 
     user: Mapped["User"] = relationship(back_populates="skills")
+    skill: Mapped["Skill"] = relationship()
 
     __table_args__ = (UniqueConstraint("user_id", "skill_id", name="uq_user_skill"),)
