@@ -91,6 +91,13 @@
     transform: translateY(-1px);
 }
 
+.login-form .submit-button:disabled {
+    cursor: not-allowed;
+    background: #8ab0ff;
+    box-shadow: none;
+    transform: none;
+}
+
 .login-form .submit-button:active {
     transform: translateY(0);
 }
@@ -98,6 +105,12 @@
 .login-form .submit-button:focus-visible {
     outline: 3px solid #246bfe47;
     outline-offset: 3px;
+}
+
+.form-error {
+    margin: 4px 0 0;
+    color: #dc2626;
+    font-size: 14px;
 }
 
 @media (max-width: 480px) {
