@@ -1,16 +1,66 @@
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { getTaskById } from "../../api/tasksApi";
+import type { Task, TaskStatus } from "../../types/task";
 
-const task = {
-  title: "Create Login Page",
-  description: "Build a responsive login page with email, password, background and submit button.",
-  assignee: "John",
-  status: "In Progress",
-  difficulty: 3,
-  deadline: "2026-07-03",
+const statusLabels: Record<TaskStatus, string> = {
+  todo: "To Do",
+  in_progress: "In Progress",
+  review: "Review",
+  done: "Done",
 };
 
 export default function TaskDetailsPage() {
   const { taskId } = useParams();
+  const [task, setTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadTask() {
+      const id = Number(taskId);
+
+      if (!id) {
+        setError("Некорректный id задачи.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await getTaskById(id);
+
+        if (!data) {
+          setError("Задача не найдена.");
+          return;
+        }
+
+        setTask(data);
+      } catch {
+        setError("Не удалось загрузить задачу.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTask();
+  }, [taskId]);
+
+  if (loading) {
+    return (
+      <main className="page-shell">
+        <section className="page-panel">Загрузка задачи...</section>
+      </main>
+    );
+  }
+
+  if (error || !task) {
+    return (
+      <main className="page-shell">
+        <section className="page-panel state-error">{error}</section>
+        <Link className="page-link" to="/tasks">Назад к задачам</Link>
+      </main>
+    );
+  }
 
   return (
     <main className="page-shell">
@@ -25,7 +75,7 @@ export default function TaskDetailsPage() {
           <dt>Assignee</dt>
           <dd>{task.assignee}</dd>
           <dt>Status</dt>
-          <dd>{task.status}</dd>
+          <dd>{statusLabels[task.status]}</dd>
           <dt>Difficulty</dt>
           <dd>{task.difficulty}/5</dd>
           <dt>Deadline</dt>
