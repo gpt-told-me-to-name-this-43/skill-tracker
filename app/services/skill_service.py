@@ -118,9 +118,7 @@ class SkillService:
 
             result.append(
                 UserSkillRead(
-                    skill=SkillRead(
-                        id=skill.id, name=skill.name, description=skill.description
-                    ),
+                    skill=SkillRead(id=skill.id, name=skill.name, description=skill.description),
                     experience=user_skill.experience,
                     level=progress.level,
                     current_level_xp=progress.current_level_xp,
@@ -154,9 +152,7 @@ class SkillService:
 
             skills_list.append(
                 UserSkillRead(
-                    skill=SkillRead(
-                        id=skill.id, name=skill.name, description=skill.description
-                    ),
+                    skill=SkillRead(id=skill.id, name=skill.name, description=skill.description),
                     experience=user_skill.experience,
                     level=progress.level,
                     current_level_xp=progress.current_level_xp,

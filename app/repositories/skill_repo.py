@@ -38,18 +38,13 @@ class SkillRepository:
 
     async def get_user_skills(self, user_id: int) -> Sequence[UserSkill]:
         result = await self.session.execute(
-            select(UserSkill)
-            .where(UserSkill.user_id == user_id)
-            .order_by(UserSkill.id)
+            select(UserSkill).where(UserSkill.user_id == user_id).order_by(UserSkill.id)
         )
         return result.scalars().all()
 
     async def get_user_skill(self, user_id: int, skill_id: int) -> UserSkill | None:
         result = await self.session.execute(
-            select(UserSkill).where(
-                UserSkill.user_id == user_id,
-                UserSkill.skill_id == skill_id
-            )
+            select(UserSkill).where(UserSkill.user_id == user_id, UserSkill.skill_id == skill_id)
         )
         return result.scalar_one_or_none()
 
