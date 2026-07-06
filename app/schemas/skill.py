@@ -7,7 +7,7 @@ class SkillBase(BaseModel):
 
 
 class SkillCreate(SkillBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class SkillUpdate(BaseModel):
