@@ -1,3 +1,5 @@
+import { apiClient } from "./client";
+
 export type User = {
   id: number;
   name: string;
@@ -9,30 +11,14 @@ export type LoginResponse = {
   user: User;
 };
 
-const mockUser = {
-  id: 1,
-  name: "John Smith",
-  email: "john@example.com",
-};
-
 export function login(email: string, password: string): Promise<LoginResponse> {
-  if (!email || !password) {
-    return Promise.reject(new Error("Email and password are required"));
-  }
-
-  return Promise.resolve({
-    token: "mock-auth-token",
-    user: {
-      ...mockUser,
-      email,
-    },
-  });
+  return apiClient.post<LoginResponse>("/auth/login", { email, password });
 }
 
 export function logout(): Promise<void> {
-  return Promise.resolve();
+  return apiClient.post<void>("/auth/logout");
 }
 
 export function getCurrentUser(): Promise<User> {
-  return Promise.resolve(mockUser);
+  return apiClient.get<User>("/auth/me");
 }
