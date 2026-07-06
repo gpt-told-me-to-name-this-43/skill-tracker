@@ -15,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
-def get_skill_service(db: DbSession) -> SkillService:
+async def get_skill_service(db: DbSession) -> SkillService:
     return SkillService(SkillRepository(db))
 
 
@@ -32,7 +32,14 @@ class Pagination:
         self.offset = offset
 
 
-PaginationDep = Annotated[Pagination, Depends(Pagination)]
+async def get_pagination(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> Pagination:
+    return Pagination(limit, offset)
+
+
+PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
 
 def unauthorized_error() -> HTTPException:
