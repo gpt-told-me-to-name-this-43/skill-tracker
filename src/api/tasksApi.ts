@@ -1,4 +1,13 @@
 import type { Task } from "../types/task";
+import type { TaskStatus } from "../types/task";
+
+export type CreateTaskPayload = {
+  title: string;
+  description: string;
+  deadline: string;
+  difficulty: number;
+  assignee: string;
+};
 
 const mockTasks: Task[] = [
   {
@@ -53,4 +62,32 @@ export function getTasks(): Promise<Task[]> {
 
 export function getTaskById(taskId: number): Promise<Task | undefined> {
   return Promise.resolve(mockTasks.find((task) => task.id === taskId));
+}
+
+export function createTask(task: CreateTaskPayload): Promise<Task> {
+  const now = new Date().toISOString().slice(0, 10);
+  const createdTask: Task = {
+    ...task,
+    id: Math.max(...mockTasks.map((item) => item.id)) + 1,
+    status: "todo",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  mockTasks.push(createdTask);
+
+  return Promise.resolve(createdTask);
+}
+
+export function updateTaskStatus(taskId: number, status: TaskStatus): Promise<Task | undefined> {
+  const task = mockTasks.find((item) => item.id === taskId);
+
+  if (!task) {
+    return Promise.resolve(undefined);
+  }
+
+  task.status = status;
+  task.updatedAt = new Date().toISOString().slice(0, 10);
+
+  return Promise.resolve(task);
 }
