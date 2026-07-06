@@ -2,31 +2,19 @@
 
 Revision ID: 4ad7d0934cc5
 Revises: f60470687a86
-Create Date: 2026-07-03 17:09:58.531820
-
+Create Date: 2026-07-03 17:09:00
 """
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = '4ad7d0934cc5'
-down_revision: str | Sequence[str] | None = 'f60470687a86'
+down_revision: str | None = 'f60470687a86'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
-
-task_status = postgresql.ENUM(
-    "todo",
-    "in_progress",
-    "review",
-    "done",
-    name="taskstatus",
-    create_type=False,
-)
 
 
 def upgrade() -> None:
@@ -36,21 +24,29 @@ def upgrade() -> None:
     # 2. Добавляем timestamps в user_skills
     op.add_column(
         'user_skills',
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+        sa.Column(
+            'created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True
+        ),
     )
     op.add_column(
         'user_skills',
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+        sa.Column(
+            'updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True
+        ),
     )
 
     # 3. Добавляем timestamps в skills
     op.add_column(
         'skills',
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+        sa.Column(
+            'created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True
+        ),
     )
     op.add_column(
         'skills',
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+        sa.Column(
+            'updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True
+        ),
     )
 
     # 4. Создаём unique index на (user_id, skill_id)

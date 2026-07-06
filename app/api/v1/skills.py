@@ -1,7 +1,14 @@
 from fastapi import APIRouter, status
 
 from app.api.deps import PaginationDep, SkillServiceDep
-from app.schemas.skill import SkillCreate, SkillRead, SkillUpdate, UserSkillAssign, UserSkillRead, UserProgressRead
+from app.schemas.skill import (
+    SkillCreate,
+    SkillRead,
+    SkillUpdate,
+    UserProgressRead,
+    UserSkillAssign,
+    UserSkillRead,
+)
 
 router = APIRouter()
 
@@ -32,8 +39,11 @@ async def delete_skill(skill_id: int, service: SkillServiceDep):
     await service.delete(skill_id)
 
 
-# Эндпоинты для пользователей
-@router.post("/users/{user_id}/skills", response_model=UserSkillRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users/{user_id}/skills",
+    response_model=UserSkillRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def assign_skill_to_user(
     user_id: int,
     data: UserSkillAssign,

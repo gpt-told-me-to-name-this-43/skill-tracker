@@ -2,6 +2,7 @@ from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, IntPKMixin, TimestampMixin
+from app.models.skill import Skill
 
 
 class User(Base, IntPKMixin, TimestampMixin):
