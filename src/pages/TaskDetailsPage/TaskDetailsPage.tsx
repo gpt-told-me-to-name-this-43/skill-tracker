@@ -1,20 +1,39 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getTaskById } from "../../api/tasksApi";
+import { getTaskById, updateTaskStatus } from "../../api/tasksApi";
+import StatusBadge from "../../components/StatusBadge/StatusBadge";
+import { statusLabels } from "../../constants/taskStatus";
 import type { Task, TaskStatus } from "../../types/task";
 
-const statusLabels: Record<TaskStatus, string> = {
-  todo: "To Do",
-  in_progress: "In Progress",
-  review: "Review",
-  done: "Done",
-};
+const statuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
 
 export default function TaskDetailsPage() {
   const { taskId } = useParams();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusError, setStatusError] = useState("");
+
+  async function handleStatusChange(status: TaskStatus) {
+    if (!task) {
+      return;
+    }
+
+    setStatusError("");
+
+    try {
+      const updatedTask = await updateTaskStatus(task.id, status);
+
+      if (!updatedTask) {
+        setStatusError("Не удалось обновить статус задачи.");
+        return;
+      }
+
+      setTask({ ...updatedTask });
+    } catch {
+      setStatusError("Не удалось обновить статус задачи.");
+    }
+  }
 
   useEffect(() => {
     async function loadTask() {
@@ -75,17 +94,20 @@ export default function TaskDetailsPage() {
           <dt>Assignee</dt>
           <dd>{task.assignee}</dd>
           <dt>Status</dt>
-          <dd>{statusLabels[task.status]}</dd>
+          <dd><StatusBadge status={task.status} /></dd>
           <dt>Difficulty</dt>
           <dd>{task.difficulty}/5</dd>
           <dt>Deadline</dt>
           <dd>{task.deadline}</dd>
         </dl>
         <section className="actions-row">
-          <button type="button">To Do</button>
-          <button type="button">In Progress</button>
-          <button type="button">Done</button>
+          {statuses.map((status) => (
+            <button disabled={task.status === status} key={status} onClick={() => handleStatusChange(status)} type="button">
+              {statusLabels[status]}
+            </button>
+          ))}
         </section>
+        {statusError && <p className="state-error">{statusError}</p>}
         <Link className="page-link" to="/tasks">Назад к задачам</Link>
       </section>
     </main>

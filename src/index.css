@@ -183,6 +183,12 @@ button:hover {
   background: var(--color-primary-dark);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  background: #8aaef8;
+}
+
 input,
 textarea,
 select {
