@@ -2,14 +2,8 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getTasks } from "../../api/tasksApi";
 import TaskCard from "../../components/TaskCard/TaskCard";
-import type { Task, TaskStatus } from "../../types/task";
-
-const statusLabels: Record<TaskStatus, string> = {
-  todo: "To Do",
-  in_progress: "In Progress",
-  review: "Review",
-  done: "Done",
-};
+import { statusLabels } from "../../constants/taskStatus";
+import type { Task } from "../../types/task";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -84,7 +78,10 @@ export default function TasksPage() {
 
       {loading && <section className="page-panel">Загрузка задач...</section>}
       {error && <section className="page-panel state-error">{error}</section>}
-      {!loading && !error && filteredTasks.length === 0 && (
+      {!loading && !error && tasks.length === 0 && (
+        <section className="page-panel">Пока нет задач.</section>
+      )}
+      {!loading && !error && tasks.length > 0 && filteredTasks.length === 0 && (
         <section className="page-panel">Задачи не найдены.</section>
       )}
       {!loading && !error && filteredTasks.length > 0 && (
