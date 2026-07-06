@@ -11,17 +11,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # App
     app_name: str = "Skill Tracker"
     debug: bool = False
 
-    # Database
     database_url: PostgresDsn
 
-    # Redis
     redis_url: RedisDsn
 
-    # JWT
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
