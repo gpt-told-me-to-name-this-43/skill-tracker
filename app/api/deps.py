@@ -2,19 +2,20 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.skill_repo import SkillRepository
 from app.services.skill_service import SkillService
 
-# tokenUrl укажет на реальный эндпоинт логина из Auth
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
-def get_skill_service(db: DbSession) -> SkillService:
+async def get_skill_service(db: DbSession) -> SkillService:
     return SkillService(SkillRepository(db))
 
 
@@ -31,28 +32,42 @@ class Pagination:
         self.offset = offset
 
 
-PaginationDep = Annotated[Pagination, Depends(Pagination)]
+async def get_pagination(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> Pagination:
+    return Pagination(limit, offset)
+
+
+PaginationDep = Annotated[Pagination, Depends(get_pagination)]
+
+
+def unauthorized_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: DbSession,
-):
-    """ЗАГЛУШКА!
-    Сейчас валидирует токен и возвращает payload, чтобы защищённые
-    роуты можно было размечать с самого начала.
-    """
+) -> User:
     from app.core.security import decode_access_token
 
     try:
         payload = decode_access_token(token)
+        user_id = int(payload["sub"])
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from None
-    return payload
+        raise unauthorized_error() from None
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+
+    if user is None:
+        raise unauthorized_error()
+
+    return user
 
 
-CurrentUser = Annotated[dict, Depends(get_current_user)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
