@@ -199,14 +199,15 @@
   font-weight: 700;
 }
 
-.skill-row progress {
-  width: 100%;
-  height: 14px;
-  accent-color: var(--color-primary);
-}
-
 .skill-row strong {
   width: 48px;
+  text-align: right;
+}
+
+.skill-row small {
+  width: 72px;
+  color: var(--color-muted);
+  font-weight: 700;
   text-align: right;
 }
 
@@ -230,12 +231,14 @@
 
   .toolbar select,
   .skill-row span,
-  .skill-row strong {
+  .skill-row strong,
+  .skill-row small {
     width: 100%;
     max-width: none;
   }
 
-  .skill-row strong {
+  .skill-row strong,
+  .skill-row small {
     text-align: left;
   }
 }
