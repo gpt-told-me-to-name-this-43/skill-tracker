@@ -3,7 +3,7 @@ class DomainError(Exception):
 
 
 class NotFoundError(DomainError):
-    pass
+    __slots__ = ()
 
 
 class BadRequestError(DomainError):
@@ -11,8 +11,8 @@ class BadRequestError(DomainError):
 
 
 class ConflictError(DomainError):
-    pass
+    __slots__ = ()
 
 
 class PermissionDeniedError(DomainError):
-    pass
+    __slots__ = ()

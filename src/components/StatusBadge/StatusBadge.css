@@ -1,0 +1,32 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 0 0 16px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #8a4b00;
+  font-size: 14px;
+  font-weight: 700;
+  background: #fff0cf;
+}
+
+.status-todo {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.status-in_progress {
+  color: #8a4b00;
+  background: #fff0cf;
+}
+
+.status-review {
+  color: #7e22ce;
+  background: #f3e8ff;
+}
+
+.status-done {
+  color: #166534;
+  background: #dcfce7;
+}
