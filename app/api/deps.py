@@ -3,10 +3,15 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import get_async_session
 
 from app.core.database import get_db
 from app.repositories.skill_repo import SkillRepository
 from app.services.skill_service import SkillService
+from app.services.task_service import TaskService
+from app.repositories.task_repo import TaskRepository
+from app.services.experience import NoOpAwarder
+from app.repositories.user_repo import UserRepository
 
 # tokenUrl укажет на реальный эндпоинт логина из Auth
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -56,3 +61,33 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[dict, Depends(get_current_user)]
+
+async def get_skill_service(
+    session: AsyncSession = Depends(get_async_session),
+) -> SkillService:
+    """Dependency для SkillService."""
+    repo = SkillRepository(session)
+    return SkillService(repo)
+
+
+async def get_task_service(
+    session: AsyncSession = Depends(get_async_session),
+) -> TaskService:
+    """
+    Dependency для TaskService.
+    
+    Инжектит NoOpAwarder как заглушку для Experience.
+    
+    TODO(epic:experience): заменить на реальный ExperienceAwarder
+    """
+    task_repo = TaskRepository(session)
+    user_repo = UserRepository(session)
+    
+    # TODO(epic:experience): replace NoOpAwarder with real ExperienceAwarder
+    awarder = NoOpAwarder()
+    
+    return TaskService(
+        task_repo=task_repo,
+        user_repo=user_repo,
+        experience_awarder=awarder,
+    )

@@ -80,7 +80,6 @@ class TaskService:
             task = await self.task_repo.set_status(task, new_status)
 
             if old_status != TaskStatus.done and new_status == TaskStatus.done:
-                # TODO(epic:experience): replace NoOpAwarder with real ExperienceAwarder
                 await self.experience_awarder.award_for_task(task)
 
         return task

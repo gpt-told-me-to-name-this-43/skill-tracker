@@ -6,6 +6,10 @@ class NotFoundError(DomainError):
     pass
 
 
+class BadRequestError(DomainError):
+    pass
+
+
 class ConflictError(DomainError):
     pass
 
