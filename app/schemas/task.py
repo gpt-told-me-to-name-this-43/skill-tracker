@@ -1,5 +1,4 @@
-ffrom datetime import datetime
-from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,17 +7,17 @@ from app.models.enums import TaskStatus
 
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
     difficulty: int = Field(3, ge=1, le=5)
-    deadline: Optional[datetime] = None
-    assignee_id: Optional[int] = None
+    deadline: datetime | None = None
+    assignee_id: int | None = None
 
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    difficulty: Optional[int] = Field(None, ge=1, le=5)
-    deadline: Optional[datetime] = None
+    title: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    difficulty: int | None = Field(None, ge=1, le=5)
+    deadline: datetime | None = None
 
 
 class TaskStatusUpdate(BaseModel):
@@ -26,7 +25,7 @@ class TaskStatusUpdate(BaseModel):
 
 
 class TaskAssign(BaseModel):
-    assignee_id: Optional[int] = None
+    assignee_id: int | None = None
 
 
 class TaskRead(BaseModel):
@@ -34,11 +33,11 @@ class TaskRead(BaseModel):
 
     id: int
     title: str
-    description: Optional[str]
+    description: str | None
     status: TaskStatus
     difficulty: int
-    deadline: Optional[datetime]
+    deadline: datetime | None
     creator_id: int
-    assignee_id: Optional[int]
+    assignee_id: int | None
     created_at: datetime
     updated_at: datetime

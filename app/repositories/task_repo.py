@@ -1,10 +1,10 @@
-from typing import Sequence, Optional
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.task import Task
 from app.models.enums import TaskStatus
+from app.models.task import Task
 from app.schemas.task import TaskCreate
 
 
@@ -14,9 +14,9 @@ class TaskRepository:
 
     async def get_tasks(
         self,
-        status: Optional[TaskStatus] = None,
-        assignee_id: Optional[int] = None,
-        difficulty: Optional[int] = None,
+        status: TaskStatus | None = None,
+        assignee_id: int | None = None,
+        difficulty: int | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[Task]:
@@ -32,10 +32,8 @@ class TaskRepository:
         result = await self.session.execute(query)
         return result.scalars().all()
 
-    async def get_task_by_id(self, task_id: int) -> Optional[Task]:
-        result = await self.session.execute(
-            select(Task).where(Task.id == task_id)
-        )
+    async def get_task_by_id(self, task_id: int) -> Task | None:
+        result = await self.session.execute(select(Task).where(Task.id == task_id))
         return result.scalar_one_or_none()
 
     async def create_task(self, data: TaskCreate, creator_id: int) -> Task:
@@ -58,7 +56,7 @@ class TaskRepository:
         await self.session.refresh(task)
         return task
 
-    async def set_assignee(self, task: Task, assignee_id: Optional[int]) -> Task:
+    async def set_assignee(self, task: Task, assignee_id: int | None) -> Task:
         task.assignee_id = assignee_id
         await self.session.flush()
         await self.session.refresh(task)
