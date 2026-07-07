@@ -1,8 +1,18 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import TaskStatus
+
+
+def _normalize_title(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    value = value.strip()
+    if not value:
+        raise ValueError("Title must not be empty")
+    return value
 
 
 class TaskCreate(BaseModel):
@@ -12,12 +22,25 @@ class TaskCreate(BaseModel):
     deadline: datetime | None = None
     assignee_id: int | None = None
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        title = _normalize_title(value)
+        if title is None:
+            raise ValueError("Title must not be empty")
+        return title
+
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     difficulty: int | None = Field(None, ge=1, le=5)
     deadline: datetime | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str | None:
+        return _normalize_title(value)
 
 
 class TaskStatusUpdate(BaseModel):

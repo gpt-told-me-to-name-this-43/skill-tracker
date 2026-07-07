@@ -93,16 +93,15 @@ class TaskService:
         Если переход non-done -> done, вызывает хук начисления опыта.
         Атомарно: если award_for_task упадёт, статус не изменится.
         """
-        async with self.task_repo.session.begin():
-            task = await self.get_task_by_id(task_id)
-            old_status = task.status
+        task = await self.get_task_by_id(task_id)
+        old_status = task.status
 
-            task = await self.task_repo.set_status(task, new_status)
+        task = await self.task_repo.set_status(task, new_status)
 
-            # Хук опыта вызывается ТОЛЬКО при переходе non-done -> done
-            if old_status != TaskStatus.done and new_status == TaskStatus.done:
-                # TODO(epic:experience): replace NoOpAwarder with real ExperienceAwarder
-                await self.experience_awarder.award_for_task(task)
+        # Хук опыта вызывается ТОЛЬКО при переходе non-done -> done
+        if old_status != TaskStatus.done and new_status == TaskStatus.done:
+            # TODO(epic:experience): replace NoOpAwarder with real ExperienceAwarder
+            await self.experience_awarder.award_for_task(task)
 
         return task
 
@@ -113,8 +112,6 @@ class TaskService:
         Разрешено даже для задач в статусе done (MVP).
         XP не переносится и не отзывается.
         """
-        async with self.task_repo.session.begin():
-            task = await self.get_task_by_id(task_id)
-            await self._ensure_user_exists(assignee_id)
-            task = await self.task_repo.set_assignee(task, assignee_id)
-        return task
+        task = await self.get_task_by_id(task_id)
+        await self._ensure_user_exists(assignee_id)
+        return await self.task_repo.set_assignee(task, assignee_id)
