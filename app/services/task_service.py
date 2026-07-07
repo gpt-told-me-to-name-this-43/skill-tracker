@@ -39,7 +39,7 @@ class TaskService:
         """Проверяет существование пользователя."""
         if user_id is None:
             return
-        user = await self.user_repo.get(user_id)  # Используем существующий метод get
+        user = await self.user_repo.get(user_id)
         if not user:
             raise NotFoundError(f"User with id {user_id} not found")
 
@@ -48,22 +48,15 @@ class TaskService:
         # Валидируем deadline и очищаем от timezone
         clean_deadline = self._validate_deadline(data.deadline)
 
+        await self._ensure_user_exists(creator_id)
         await self._ensure_user_exists(data.assignee_id)
 
-        # Создаём задачу с очищенным deadline
-        task = Task(
-            title=data.title,
-            description=data.description,
-            difficulty=data.difficulty,
-            deadline=clean_deadline,
-            assignee_id=data.assignee_id,
-            creator_id=creator_id,
-        )
-        self.task_repo.session.add(task)
-        await self.task_repo.session.flush()
-        await self.task_repo.session.refresh(task)
-        await self.task_repo.session.commit()
-        return task
+        # Готовим поля для репозитория
+        fields = data.model_dump()
+        fields["deadline"] = clean_deadline
+
+        # Repository сам сделает flush, commit делает dependency на уровне запроса
+        return await self.task_repo.create_task(fields, creator_id=creator_id)
 
     async def get_tasks(
         self,
@@ -91,9 +84,7 @@ class TaskService:
         if "deadline" in update_data:
             update_data["deadline"] = self._validate_deadline(update_data["deadline"])
 
-        task = await self.task_repo.update_task(task, update_data)
-        await self.task_repo.session.commit()
-        return task
+        return await self.task_repo.update_task(task, update_data)
 
     async def change_status(self, task_id: int, new_status: TaskStatus) -> Task:
         """

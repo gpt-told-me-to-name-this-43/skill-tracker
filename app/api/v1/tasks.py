@@ -1,6 +1,7 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
-from app.api.deps import TaskServiceDep
+from app.api.deps import CurrentUser, TaskServiceDep
+from app.models.enums import TaskStatus
 from app.schemas.task import (
     TaskAssign,
     TaskCreate,
@@ -15,22 +16,31 @@ router = APIRouter()
 @router.get("/tasks", response_model=list[TaskRead])
 async def list_tasks(
     service: TaskServiceDep,
+    status: TaskStatus | None = None,
+    assignee_id: int | None = None,
+    difficulty: int | None = Query(None, ge=1, le=5),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
 ):
-    """Получить список задач."""
-    # TODO: добавить фильтры status, assignee_id, difficulty
-    return await service.get_tasks()
+    """Получить список задач с фильтрами."""
+    return await service.get_tasks(
+        status=status,
+        assignee_id=assignee_id,
+        difficulty=difficulty,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 async def create_task(
     data: TaskCreate,
     service: TaskServiceDep,
+    current_user: CurrentUser,
 ):
-    """Создать новую задачу."""
+    """Создать новую задачу от имени текущего пользователя."""
     # TODO(epic:auth): restrict task updates by creator/assignee/admin
-    # TODO: получить current_user_id из авторизации
-    creator_id = 1  # заглушка
-    return await service.create_task(data, creator_id=creator_id)
+    return await service.create_task(data, creator_id=current_user.id)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskRead)

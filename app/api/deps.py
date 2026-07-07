@@ -98,4 +98,4 @@ async def get_current_user(
     return user
 
 
-CurrentUser = Annotated[dict, Depends(get_current_user)]
+CurrentUser = Annotated[User, Depends(get_current_user)]

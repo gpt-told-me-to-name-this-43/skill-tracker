@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import TaskStatus
 from app.models.task import Task
-from app.schemas.task import TaskCreate
 
 
 class TaskRepository:
@@ -36,8 +35,8 @@ class TaskRepository:
         result = await self.session.execute(select(Task).where(Task.id == task_id))
         return result.scalar_one_or_none()
 
-    async def create_task(self, data: TaskCreate, creator_id: int) -> Task:
-        task = Task(**data.model_dump(), creator_id=creator_id)
+    async def create_task(self, fields: dict, creator_id: int) -> Task:
+        task = Task(**fields, creator_id=creator_id)
         self.session.add(task)
         await self.session.flush()
         await self.session.refresh(task)
