@@ -6,6 +6,10 @@ class NotFoundError(DomainError):
     __slots__ = ()
 
 
+class BadRequestError(DomainError):
+    pass
+
+
 class ConflictError(DomainError):
     __slots__ = ()
 

@@ -12,12 +12,20 @@ class Task(Base, IntPKMixin, TimestampMixin):
 
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[TaskStatus] = mapped_column(default=TaskStatus.todo)
-    difficulty: Mapped[int] = mapped_column(SmallInteger, default=3)  # 1..5, см. enums.Difficulty
+    status: Mapped[TaskStatus] = mapped_column(default=TaskStatus.todo, index=True)
+    difficulty: Mapped[int] = mapped_column(
+        SmallInteger,
+        default=3,
+        index=True,
+    )  # 1..5, см. enums.Difficulty
     deadline: Mapped[datetime | None] = mapped_column(nullable=True)
 
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
 
 
 class TaskSkill(Base, IntPKMixin):
