@@ -1,10 +1,21 @@
+from __future__ import annotations
+
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, SmallInteger, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, IntPKMixin, TimestampMixin
 from app.models.enums import TaskStatus
+from app.models.skill import Skill
 
 
 class Task(Base, IntPKMixin, TimestampMixin):
@@ -33,6 +44,11 @@ class TaskSkill(Base, IntPKMixin):
 
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), index=True)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
-    exp_reward: Mapped[int] = mapped_column(default=0)
+    exp_reward: Mapped[int] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    skill: Mapped[Skill] = relationship()
 
-    __table_args__ = (UniqueConstraint("task_id", "skill_id", name="uq_task_skill"),)
+    __table_args__ = (
+        UniqueConstraint("task_id", "skill_id", name="uq_task_skill"),
+        CheckConstraint("exp_reward > 0", name="ck_task_skills_exp_reward_positive"),
+    )

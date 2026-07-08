@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import CurrentUser, TaskServiceDep
+from app.api.deps import CurrentUser, ExperienceServiceDep, TaskServiceDep
 from app.models.enums import TaskStatus
+from app.schemas.experience import TaskSkillRead, TaskSkillsSet
 from app.schemas.task import (
     TaskAssign,
     TaskCreate,
@@ -50,6 +51,26 @@ async def get_task(
 ):
     """Получить задачу по ID."""
     return await service.get_task_by_id(task_id)
+
+
+@router.get("/tasks/{task_id}/skills", response_model=list[TaskSkillRead])
+async def get_task_skills(
+    task_id: int,
+    service: ExperienceServiceDep,
+):
+    """Получить награды задачи по навыкам."""
+    return await service.get_task_skills(task_id)
+
+
+@router.put("/tasks/{task_id}/skills", response_model=list[TaskSkillRead])
+async def set_task_skills(
+    task_id: int,
+    data: TaskSkillsSet,
+    service: ExperienceServiceDep,
+):
+    """Полностью заменить награды задачи по навыкам."""
+    # TODO(epic:auth-rbac): restrict task reward updates by creator/admin
+    return await service.set_task_skills(task_id, data)
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskRead)
