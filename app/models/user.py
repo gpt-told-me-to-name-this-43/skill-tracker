@@ -11,7 +11,7 @@ class User(Base, IntPKMixin, TimestampMixin):
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(20), default="member")
+    role: Mapped[str] = mapped_column(String(20), default="user", server_default="user")
 
     skills: Mapped[list["UserSkill"]] = relationship(back_populates="user")
 

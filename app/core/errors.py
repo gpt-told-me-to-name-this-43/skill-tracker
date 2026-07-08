@@ -8,6 +8,7 @@ from app.services.exceptions import (
     ConflictError,
     NotFoundError,
     PermissionDeniedError,
+    UnauthorizedError,
 )
 
 
@@ -57,3 +58,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(BadRequestError)
     async def bad_request_handler(_: Request, exc: BadRequestError):
         return JSONResponse(status_code=400, content=_error_body(str(exc)))
+
+    @app.exception_handler(UnauthorizedError)
+    async def unauthorized_handler(_: Request, exc: UnauthorizedError):
+        return JSONResponse(
+            status_code=401,
+            content=_error_body(str(exc)),
+            headers={"WWW-Authenticate": "Bearer"},
+        )

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.v1 import experience, skills, tasks
+from app.api.v1 import auth, experience, skills, tasks, users
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 
@@ -14,8 +14,8 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    # app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-    # app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+    app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
+    app.include_router(users.router, prefix="/api/v1", tags=["users"])
     app.include_router(experience.router, prefix="/api/v1", tags=["experience"])
     app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
     app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
