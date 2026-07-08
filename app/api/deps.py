@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models.user import User
+from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
 from app.repositories.task_repo import TaskRepository
 from app.repositories.user_repo import UserRepository
-from app.services.experience import NoOpAwarder
+from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.skill_service import SkillService
 from app.services.task_service import TaskService
 
@@ -26,15 +27,12 @@ async def get_task_service(db: DbSession) -> TaskService:
     """
     Dependency для TaskService.
 
-    Инжектит NoOpAwarder как заглушку для Experience.
-
-    TODO(epic:experience): заменить на реальный ExperienceAwarder
+    Инжектит ExperienceAwarder для начисления XP при переходе задачи в done.
     """
     task_repo = TaskRepository(db)
     user_repo = UserRepository(db)
 
-    # TODO(epic:experience): replace NoOpAwarder with real ExperienceAwarder
-    awarder = NoOpAwarder()
+    awarder = DefaultExperienceAwarder(ExperienceRepository(db))
 
     return TaskService(
         task_repo=task_repo,
@@ -44,6 +42,18 @@ async def get_task_service(db: DbSession) -> TaskService:
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+
+async def get_experience_service(db: DbSession) -> ExperienceService:
+    return ExperienceService(
+        experience_repo=ExperienceRepository(db),
+        task_repo=TaskRepository(db),
+        skill_repo=SkillRepository(db),
+        user_repo=UserRepository(db),
+    )
+
+
+ExperienceServiceDep = Annotated[ExperienceService, Depends(get_experience_service)]
 
 
 class Pagination:

@@ -15,6 +15,18 @@ def _error_body(message: str, details: object = None) -> dict:
     return {"error": {"message": message, "details": details}}
 
 
+def _json_safe(value: object) -> object:
+    if isinstance(value, BaseException):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_json_safe(item) for item in value)
+    return value
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(_: Request, exc: StarletteHTTPException):
@@ -27,7 +39,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def validation_exception_handler(_: Request, exc: RequestValidationError):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=_error_body("Validation error", exc.errors()),
+            content=_error_body("Validation error", _json_safe(exc.errors())),
         )
 
     @app.exception_handler(NotFoundError)
