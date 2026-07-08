@@ -17,5 +17,6 @@ class ConflictError(DomainError):
 class PermissionDeniedError(DomainError):
     __slots__ = ()
 
+
 class UnauthorizedError(DomainError):
     __slots__ = ()

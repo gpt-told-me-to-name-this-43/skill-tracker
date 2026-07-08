@@ -7,6 +7,7 @@ from app.services.exceptions import NotFoundError
 
 router = APIRouter()
 
+
 @router.get("/users", response_model=list[UserRead])
 async def list_users(
     pagination: PaginationDep,
@@ -16,6 +17,7 @@ async def list_users(
     user_repo = UserRepository(db)
     users = await user_repo.list_users(pagination.limit, pagination.offset)
     return users
+
 
 @router.get("/users/{user_id}", response_model=UserRead)
 async def get_user(

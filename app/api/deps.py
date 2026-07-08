@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, Query
+from fastapi import Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,8 +10,8 @@ from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
 from app.repositories.task_repo import TaskRepository
 from app.repositories.user_repo import UserRepository
-from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.auth_service import AuthService
+from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.skill_service import SkillService
 from app.services.task_service import TaskService
 
@@ -79,17 +79,21 @@ PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+
 async def get_auth_service(db: DbSession) -> AuthService:
     return AuthService(UserRepository(db))
 
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
+
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    auth_service: AuthService = Depends(get_auth_service),
+    token: Annotated[str, Depends(oauth2_scheme)],
+    auth_service: AuthServiceDep,
 ) -> User:
     # Если токен битый/истёк, auth_service выбросит UnauthorizedError,
-    # который перехватится глобальным обработчиком 
+    # который перехватится глобальным обработчиком
     return await auth_service.get_user_from_token(token)
+
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

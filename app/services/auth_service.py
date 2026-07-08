@@ -21,18 +21,17 @@ class AuthService:
     async def register(self, email: str, username: str, password: str) -> User:
         email = self._normalize_email(email)
 
-        if await self.user_repo.get_by_email(email):
+        if await self.user_repo.get_user_by_email(email):
             raise ConflictError("Email already registered")
-        if await self.user_repo.get_by_username(username):
+        if await self.user_repo.get_user_by_username(username):
             raise ConflictError("Username already taken")
 
         hashed_password = hash_password(password)
-        user = await self.user_repo.create(email, username, hashed_password)
-        return user
+        return await self.user_repo.create_user(email, username, hashed_password)
 
     async def login(self, email: str, password: str) -> str:
         email = self._normalize_email(email)
-        user = await self.user_repo.get_by_email(email)
+        user = await self.user_repo.get_user_by_email(email)
 
         if not user or not verify_password(password, user.hashed_password):
             raise UnauthorizedError("Invalid credentials")
@@ -44,7 +43,7 @@ class AuthService:
             payload = decode_access_token(token)
             user_id = int(payload.get("sub"))
         except (jwt.PyJWTError, ValueError, TypeError):
-            raise UnauthorizedError("Invalid token")
+            raise UnauthorizedError("Invalid token") from None
 
         user = await self.user_repo.get(user_id)
         if not user:

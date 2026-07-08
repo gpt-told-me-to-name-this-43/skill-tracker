@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.v1 import experience, skills, tasks, auth, users
+from app.api.v1 import auth, experience, skills, tasks, users
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 
