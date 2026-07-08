@@ -39,7 +39,7 @@ class TaskService:
         """Проверяет существование пользователя."""
         if user_id is None:
             return
-        user = await self.user_repo.get(user_id)
+        user = await self.user_repo.get_user_by_id(user_id)
         if not user:
             raise NotFoundError(f"User with id {user_id} not found")
 

@@ -122,6 +122,6 @@ class ExperienceService:
             raise NotFoundError(f"Skill {skill_id} not found")
 
     async def _ensure_user_exists(self, user_id: int) -> None:
-        user = await self.user_repo.get(user_id)
+        user = await self.user_repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User {user_id} not found")

@@ -20,6 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.execute("UPDATE users SET role = 'user' WHERE role = 'member'")
     # Меняем server_default в БД с 'member' на 'user'
     op.alter_column(
         "users",
@@ -31,6 +32,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("UPDATE users SET role = 'member' WHERE role = 'user'")
     # Возвращаем всё как было
     op.alter_column(
         "users",

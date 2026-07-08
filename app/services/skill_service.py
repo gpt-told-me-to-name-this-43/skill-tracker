@@ -79,7 +79,7 @@ class SkillService:
         from app.repositories.user_repo import UserRepository
 
         user_repo = UserRepository(self.repo.session)
-        user = await user_repo.get(user_id)
+        user = await user_repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User {user_id} not found")
 
@@ -105,7 +105,7 @@ class SkillService:
         from app.repositories.user_repo import UserRepository
 
         user_repo = UserRepository(self.repo.session)
-        user = await user_repo.get(user_id)
+        user = await user_repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User {user_id} not found")
 
@@ -133,7 +133,7 @@ class SkillService:
         from app.repositories.user_repo import UserRepository
 
         user_repo = UserRepository(self.repo.session)
-        user = await user_repo.get(user_id)
+        user = await user_repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User {user_id} not found")
 

@@ -11,9 +11,11 @@ from app.repositories.skill_repo import SkillRepository
 from app.repositories.task_repo import TaskRepository
 from app.repositories.user_repo import UserRepository
 from app.services.auth_service import AuthService
+from app.services.exceptions import UnauthorizedError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.skill_service import SkillService
 from app.services.task_service import TaskService
+from app.services.user_service import UserService
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -58,6 +60,13 @@ async def get_experience_service(db: DbSession) -> ExperienceService:
 ExperienceServiceDep = Annotated[ExperienceService, Depends(get_experience_service)]
 
 
+async def get_user_service(db: DbSession) -> UserService:
+    return UserService(UserRepository(db))
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
 class Pagination:
     def __init__(
         self,
@@ -77,7 +86,7 @@ async def get_pagination(
 
 PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 async def get_auth_service(db: DbSession) -> AuthService:
@@ -88,9 +97,12 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str | None, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep,
 ) -> User:
+    if token is None:
+        raise UnauthorizedError("Not authenticated")
+
     # Если токен битый/истёк, auth_service выбросит UnauthorizedError,
     # который перехватится глобальным обработчиком
     return await auth_service.get_user_from_token(token)

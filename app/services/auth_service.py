@@ -45,7 +45,7 @@ class AuthService:
         except (jwt.PyJWTError, ValueError, TypeError):
             raise UnauthorizedError("Invalid token") from None
 
-        user = await self.user_repo.get(user_id)
+        user = await self.user_repo.get_user_by_id(user_id)
         if not user:
             raise UnauthorizedError("Invalid token")
         return user

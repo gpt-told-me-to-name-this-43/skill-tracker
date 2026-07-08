@@ -118,6 +118,9 @@ class FakeUserRepo:
     async def get(self, user_id: int):
         return self.users.get(user_id)
 
+    async def get_user_by_id(self, user_id: int):
+        return await self.get(user_id)
+
 
 class FailingAfterWriteAwarder(DefaultExperienceAwarder):
     async def award_for_task(self, task: Task) -> None:

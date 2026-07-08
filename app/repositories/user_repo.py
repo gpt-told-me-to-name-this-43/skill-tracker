@@ -8,8 +8,11 @@ class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: int) -> User | None:
         return await self.session.get(User, user_id)
+
+    async def get(self, user_id: int) -> User | None:
+        return await self.get_user_by_id(user_id)
 
     async def get_user_by_email(self, email: str) -> User | None:
         result = await self.session.execute(select(User).where(User.email == email))
