@@ -24,12 +24,24 @@ def upgrade() -> None:
         "task_skills",
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
     )
+    op.execute("UPDATE task_skills SET exp_reward = 1 WHERE exp_reward IS NULL OR exp_reward <= 0")
     op.create_check_constraint(
         "ck_task_skills_exp_reward_positive",
         "task_skills",
         "exp_reward > 0",
     )
 
+    op.execute("DELETE FROM experience_logs WHERE task_id IS NULL OR amount IS NULL OR amount <= 0")
+    op.execute(
+        """
+        DELETE FROM experience_logs duplicate
+        USING experience_logs original
+        WHERE duplicate.id > original.id
+          AND duplicate.task_id = original.task_id
+          AND duplicate.user_id = original.user_id
+          AND duplicate.skill_id = original.skill_id
+        """
+    )
     op.alter_column(
         "experience_logs",
         "task_id",

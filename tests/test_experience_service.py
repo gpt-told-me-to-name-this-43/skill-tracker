@@ -1,12 +1,21 @@
+import os
+import uuid
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.models import Base
 from app.models.enums import TaskStatus
 from app.models.experience import ExperienceLog
 from app.models.skill import Skill
 from app.models.task import Task, TaskSkill
 from app.models.user import User, UserSkill
+from app.repositories.experience_repo import ExperienceRepository
+from app.repositories.task_repo import TaskRepository
+from app.repositories.user_repo import UserRepository
 from app.schemas.experience import TaskSkillItem, TaskSkillsSet
 from app.services.exceptions import NotFoundError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
@@ -108,6 +117,12 @@ class FakeUserRepo:
 
     async def get(self, user_id: int):
         return self.users.get(user_id)
+
+
+class FailingAfterWriteAwarder(DefaultExperienceAwarder):
+    async def award_for_task(self, task: Task) -> None:
+        await super().award_for_task(task)
+        raise RuntimeError("award failed after writes")
 
 
 def task(task_id: int, assignee_id: int | None = 10, status: TaskStatus = TaskStatus.todo) -> Task:
@@ -321,3 +336,125 @@ async def test_get_user_log_checks_user_and_returns_newest_first():
     result = await service.get_user_log(user_id=10, limit=50, offset=0)
 
     assert [log.id for log in result] == [2, 1]
+
+
+async def make_postgres_sessionmaker():
+    database_url = os.environ.get("TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TEST_DATABASE_URL is required for real AsyncSession Experience tests")
+
+    schema = f"test_experience_{uuid.uuid4().hex}"
+    admin_engine = create_async_engine(database_url, connect_args={"timeout": 5})
+    try:
+        async with admin_engine.begin() as connection:
+            await connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    except Exception as exc:
+        await admin_engine.dispose()
+        pytest.skip(f"TEST_DATABASE_URL is not available: {exc}")
+
+    engine = create_async_engine(
+        database_url,
+        connect_args={
+            "timeout": 5,
+            "server_settings": {"search_path": f'"{schema}",public'},
+        },
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    return async_sessionmaker(engine, expire_on_commit=False), engine, admin_engine, schema
+
+
+async def dispose_postgres_schema(engine, admin_engine, schema: str) -> None:
+    await engine.dispose()
+    async with admin_engine.begin() as connection:
+        await connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+    await admin_engine.dispose()
+
+
+async def seed_award_data(session_factory, exp_reward: int = 50) -> None:
+    async with session_factory() as session:
+        user_model = User(
+            id=10,
+            username="assignee",
+            email="assignee@example.test",
+            hashed_password="hash",
+        )
+        creator = User(
+            id=1,
+            username="creator",
+            email="creator@example.test",
+            hashed_password="hash",
+        )
+        skill_model = Skill(id=1, name="backend", description=None)
+        task_model = Task(
+            id=1,
+            title="Done task",
+            status=TaskStatus.todo,
+            difficulty=3,
+            creator_id=creator.id,
+            assignee_id=user_model.id,
+        )
+        reward = TaskSkill(task_id=task_model.id, skill_id=skill_model.id, exp_reward=exp_reward)
+        session.add_all([creator, user_model, skill_model, task_model, reward])
+        await session.commit()
+
+
+async def test_real_session_rollback_keeps_task_todo_and_xp_unchanged_on_award_error():
+    session_factory, engine, admin_engine, schema = await make_postgres_sessionmaker()
+    try:
+        await seed_award_data(session_factory)
+
+        async with session_factory() as session:
+            service = TaskService(
+                task_repo=TaskRepository(session),
+                user_repo=UserRepository(session),
+                experience_awarder=FailingAfterWriteAwarder(ExperienceRepository(session)),
+            )
+
+            with pytest.raises(RuntimeError, match="award failed after writes"):
+                async with session.begin():
+                    await service.change_status(1, TaskStatus.done)
+
+        async with session_factory() as session:
+            task_status = await session.scalar(select(Task.status).where(Task.id == 1))
+            log_count = await session.scalar(select(func.count()).select_from(ExperienceLog))
+            user_skill = await session.scalar(
+                select(UserSkill).where(UserSkill.user_id == 10, UserSkill.skill_id == 1)
+            )
+
+        assert task_status == TaskStatus.todo
+        assert log_count == 0
+        assert user_skill is None
+    finally:
+        await dispose_postgres_schema(engine, admin_engine, schema)
+
+
+async def test_real_session_idempotency_and_unique_experience_log_constraint():
+    session_factory, engine, admin_engine, schema = await make_postgres_sessionmaker()
+    try:
+        await seed_award_data(session_factory)
+
+        async with session_factory() as session:
+            repo = ExperienceRepository(session)
+            awarder = DefaultExperienceAwarder(repo)
+            task_model = await session.get(Task, 1)
+
+            await awarder.award_for_task(task_model)
+            await awarder.award_for_task(task_model)
+            await session.commit()
+
+        async with session_factory() as session:
+            user_skill = await session.scalar(
+                select(UserSkill).where(UserSkill.user_id == 10, UserSkill.skill_id == 1)
+            )
+            log_count = await session.scalar(select(func.count()).select_from(ExperienceLog))
+
+            assert user_skill.experience == 50
+            assert log_count == 1
+
+            repo = ExperienceRepository(session)
+            with pytest.raises(IntegrityError):
+                await repo.create_log_entry(user_id=10, skill_id=1, task_id=1, amount=50)
+    finally:
+        await dispose_postgres_schema(engine, admin_engine, schema)
