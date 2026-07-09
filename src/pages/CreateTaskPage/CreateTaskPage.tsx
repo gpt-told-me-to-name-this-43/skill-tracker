@@ -21,7 +21,6 @@ export default function CreateTaskPage() {
       try {
         const data = await getUsers();
         setUsers(data);
-        setAssignee(data[0]?.name ?? "");
       } catch {
         setError("Не удалось загрузить пользователей.");
       } finally {
@@ -43,7 +42,7 @@ export default function CreateTaskPage() {
         description,
         deadline,
         difficulty: Number(difficulty),
-        assignee,
+        assignee_id: assignee ? Number(assignee) : null,
       });
 
       console.log("Created task", task);
@@ -64,10 +63,7 @@ export default function CreateTaskPage() {
 
       {loading && <section className="page-panel">Загрузка пользователей...</section>}
       {error && <section className="page-panel state-error">{error}</section>}
-      {!loading && !error && users.length === 0 && (
-        <section className="page-panel">Нет пользователей для назначения задачи.</section>
-      )}
-      {!loading && users.length > 0 && (
+      {!loading && !error && (
       <form className="page-panel task-form" onSubmit={handleSubmit}>
         <label htmlFor="title">Title</label>
         <input id="title" name="title" onChange={(event) => setTitle(event.target.value)} placeholder="Create Login Page" required value={title} />
@@ -88,9 +84,10 @@ export default function CreateTaskPage() {
         </select>
 
         <label htmlFor="assignee">Assignee</label>
-        <select id="assignee" name="assignee" onChange={(event) => setAssignee(event.target.value)} required value={assignee}>
+        <select id="assignee" name="assignee" onChange={(event) => setAssignee(event.target.value)} value={assignee}>
+          <option value="">Без исполнителя</option>
           {users.map((user) => (
-            <option key={user.id} value={user.name}>{user.name}</option>
+            <option key={user.id} value={user.id}>{user.username}</option>
           ))}
         </select>
 

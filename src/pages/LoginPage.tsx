@@ -10,6 +10,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const { login, isAuthenticated } = useAuth()
     const navigate = useNavigate()
+    const canSubmit = email.trim() !== '' && password !== '' && !loading
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -44,6 +45,8 @@ export default function LoginPage() {
                     type="email"
                     placeholder='name@example.com'
                     autoComplete="email"
+                    autoFocus
+                    required
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                 />
@@ -54,11 +57,12 @@ export default function LoginPage() {
                     type="password"
                     placeholder='Введите пароль'
                     autoComplete="current-password"
+                    required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                 />
                 {error && <p className="form-error">{error}</p>}
-                <button className="submit-button" type="submit" disabled={loading}>
+                <button className="submit-button" type="submit" disabled={!canSubmit}>
                     {loading ? 'Входим...' : 'Продолжить'}
                 </button>
             </form>

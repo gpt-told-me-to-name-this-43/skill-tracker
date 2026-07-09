@@ -7,7 +7,7 @@ export type CreateTaskPayload = {
   description: string;
   deadline: string;
   difficulty: number;
-  assignee: string;
+  assignee_id: number | null;
 };
 
 export function getTasks(): Promise<Task[]> {
@@ -24,4 +24,8 @@ export function createTask(task: CreateTaskPayload): Promise<Task> {
 
 export function updateTaskStatus(taskId: number, status: TaskStatus): Promise<Task | undefined> {
   return apiClient.patch<Task>(`/tasks/${taskId}/status`, { status });
+}
+
+export function approveTask(taskId: number): Promise<Task | undefined> {
+  return apiClient.patch<Task>(`/tasks/${taskId}/approve`);
 }

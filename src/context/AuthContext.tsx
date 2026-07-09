@@ -3,7 +3,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { login as loginRequest, logout as logoutRequest, type User } from "../api/authApi";
+import { getCurrentUser, login as loginRequest, type User } from "../api/authApi";
 import { AuthContext } from "./authStore";
 
 function getStoredUser() {
@@ -13,7 +13,12 @@ function getStoredUser() {
     return null;
   }
 
-  return JSON.parse(value) as User;
+  try {
+    return JSON.parse(value) as User;
+  } catch {
+    localStorage.removeItem("user");
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -23,15 +28,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const response = await loginRequest(email, password);
 
-    localStorage.setItem("token", response.token);
-    localStorage.setItem("user", JSON.stringify(response.user));
-    setToken(response.token);
-    setUser(response.user);
+    try {
+      localStorage.setItem("token", response.access_token);
+      const currentUser = await getCurrentUser();
+
+      localStorage.setItem("user", JSON.stringify(currentUser));
+      setToken(response.access_token);
+      setUser(currentUser);
+    } catch (error) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setToken(null);
+      setUser(null);
+      throw error;
+    }
   }
 
   async function logout() {
-    await logoutRequest();
-
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setToken(null);

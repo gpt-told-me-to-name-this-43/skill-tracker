@@ -11,6 +11,24 @@ from app.services.experience import ExperienceAwarder
 
 
 class TaskService:
+    def _validate_status_transition(
+        self,
+        old_status: TaskStatus,
+        new_status: TaskStatus,
+    ) -> None:
+        if old_status == new_status:
+            return
+
+        if new_status == TaskStatus.done and old_status != TaskStatus.review:
+            raise BadRequestError("Task can be moved to done only from review")
+
+    def _should_clear_approval(self, old_status: TaskStatus, new_status: TaskStatus) -> bool:
+        if old_status == new_status:
+            return False
+        if new_status == TaskStatus.review:
+            return True
+        return old_status in {TaskStatus.review, TaskStatus.done} and new_status != TaskStatus.done
+
     def __init__(
         self,
         task_repo: TaskRepository,
@@ -95,8 +113,19 @@ class TaskService:
         """
         task = await self.get_task_by_id(task_id)
         old_status = task.status
+        self._validate_status_transition(old_status, new_status)
 
-        task = await self.task_repo.set_status(task, new_status)
+        moving_to_done_from_review = (
+            old_status == TaskStatus.review and new_status == TaskStatus.done
+        )
+        if moving_to_done_from_review and not task.approved_at:
+            raise BadRequestError("Task must be approved before moving to done")
+
+        task = await self.task_repo.set_status(
+            task,
+            new_status,
+            clear_approval=self._should_clear_approval(old_status, new_status),
+        )
 
         # Хук опыта вызывается ТОЛЬКО при переходе non-done -> done
         if old_status != TaskStatus.done and new_status == TaskStatus.done:
@@ -115,3 +144,13 @@ class TaskService:
         task = await self.get_task_by_id(task_id)
         await self._ensure_user_exists(assignee_id)
         return await self.task_repo.set_assignee(task, assignee_id)
+
+    async def approve_task(self, task_id: int, approver_id: int) -> Task:
+        task = await self.get_task_by_id(task_id)
+        await self._ensure_user_exists(approver_id)
+
+        if task.status != TaskStatus.review:
+            raise BadRequestError("Only tasks in review can be approved")
+
+        approved_at = datetime.now(UTC).replace(tzinfo=None)
+        return await self.task_repo.approve_task(task, approver_id, approved_at)

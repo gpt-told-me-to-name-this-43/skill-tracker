@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getTaskById, updateTaskStatus } from "../../api/tasksApi";
+import { approveTask, getTaskById, updateTaskStatus } from "../../api/tasksApi";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
 import type { Task, TaskStatus } from "../../types/task";
 
 const statuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
+
+function canChangeStatus(task: Task, nextStatus: TaskStatus) {
+  if (task.status === nextStatus) {
+    return false;
+  }
+
+  return nextStatus !== "done" || (task.status === "review" && Boolean(task.approved_at));
+}
 
 export default function TaskDetailsPage() {
   const { taskId } = useParams();
@@ -32,6 +40,27 @@ export default function TaskDetailsPage() {
       setTask({ ...updatedTask });
     } catch {
       setStatusError("Не удалось обновить статус задачи.");
+    }
+  }
+
+  async function handleApprove() {
+    if (!task) {
+      return;
+    }
+
+    setStatusError("");
+
+    try {
+      const approvedTask = await approveTask(task.id);
+
+      if (!approvedTask) {
+        setStatusError("Не удалось апрувнуть задачу.");
+        return;
+      }
+
+      setTask({ ...approvedTask });
+    } catch {
+      setStatusError("Не удалось апрувнуть задачу.");
     }
   }
 
@@ -92,17 +121,22 @@ export default function TaskDetailsPage() {
         <p>{task.description}</p>
         <dl className="details-list">
           <dt>Assignee</dt>
-          <dd>{task.assignee}</dd>
+          <dd>{task.assignee_id ?? "Unassigned"}</dd>
           <dt>Status</dt>
           <dd><StatusBadge status={task.status} /></dd>
+          <dt>Approval</dt>
+          <dd>{task.approved_at ? `Approved by #${task.approved_by_id}` : "Not approved"}</dd>
           <dt>Difficulty</dt>
           <dd>{task.difficulty}/5</dd>
           <dt>Deadline</dt>
-          <dd>{task.deadline}</dd>
+          <dd>{task.deadline ?? "No deadline"}</dd>
         </dl>
         <section className="actions-row">
+          <button disabled={task.status !== "review" || Boolean(task.approved_at)} onClick={handleApprove} type="button">
+            Approve review
+          </button>
           {statuses.map((status) => (
-            <button disabled={task.status === status} key={status} onClick={() => handleStatusChange(status)} type="button">
+            <button disabled={!canChangeStatus(task, status)} key={status} onClick={() => handleStatusChange(status)} type="button">
               {statusLabels[status]}
             </button>
           ))}

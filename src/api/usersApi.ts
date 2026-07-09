@@ -2,8 +2,10 @@ import { apiClient } from "./client";
 
 export type User = {
   id: number;
-  name: string;
   email: string;
+  username: string;
+  role: string;
+  created_at: string;
 };
 
 export function getUsers(): Promise<User[]> {

@@ -62,5 +62,7 @@ class TaskRead(BaseModel):
     deadline: datetime | None
     creator_id: int
     assignee_id: int | None
+    approved_by_id: int | None
+    approved_at: datetime | None
     created_at: datetime
     updated_at: datetime
