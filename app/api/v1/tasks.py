@@ -95,6 +95,17 @@ async def change_task_status(
     return await service.change_status(task_id, data.status)
 
 
+@router.patch("/tasks/{task_id}/approve", response_model=TaskRead)
+async def approve_task(
+    task_id: int,
+    service: TaskServiceDep,
+    current_user: CurrentUser,
+):
+    """Approve a review task before it can be moved to done."""
+    # TODO(epic:auth-rbac): restrict approval by reviewer/admin.
+    return await service.approve_task(task_id, current_user.id)
+
+
 @router.patch("/tasks/{task_id}/assign", response_model=TaskRead)
 async def assign_task(
     task_id: int,

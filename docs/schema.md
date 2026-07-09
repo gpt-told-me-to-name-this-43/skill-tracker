@@ -17,13 +17,19 @@ erDiagram
 - **User** — пользователь (username, email, hashed_password, role).
 - **Skill** — справочник компетенций.
 - **UserSkill** — прогресс пользователя по навыку (experience, level). M:N User↔Skill.
-- **Task** — задача (status, difficulty, deadline; creator_id + assignee_id).
+- **Task** — задача (status, difficulty, deadline; creator_id, assignee_id, approval).
 - **TaskSkill** — какие навыки прокачивает задача (exp_reward). M:N Task↔Skill.
 - **ExperienceLog** — журнал начислений опыта.
 
 ## Enum-типы
 - `TaskStatus`: todo, in_progress, review, done
 - `Difficulty`: 1..5 (валидируется в схемах, хранится как smallint)
+
+## Workflow задач
+
+`done` разрешён только из `review` после approval. Задачу нельзя закрыть сразу из
+`todo` или `in_progress`; сначала её нужно перевести в `review`, апрувнуть, затем
+перевести в `done`.
 
 ## Правило
 Изменение модели = миграция Alembic в том же PR.

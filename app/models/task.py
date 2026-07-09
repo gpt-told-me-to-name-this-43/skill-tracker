@@ -37,6 +37,12 @@ class Task(Base, IntPKMixin, TimestampMixin):
         nullable=True,
         index=True,
     )
+    approved_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 class TaskSkill(Base, IntPKMixin):

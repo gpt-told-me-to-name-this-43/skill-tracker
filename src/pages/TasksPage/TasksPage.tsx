@@ -29,12 +29,12 @@ export default function TasksPage() {
   }, []);
 
   const statuses = [...new Set(tasks.map((task) => task.status))];
-  const assignees = [...new Set(tasks.map((task) => task.assignee))];
+  const assignees = [...new Set(tasks.map((task) => task.assignee_id))];
   const difficulties = [...new Set(tasks.map((task) => task.difficulty))];
 
   const filteredTasks = tasks.filter((task) => {
     const byStatus = status === "all" || task.status === status;
-    const byAssignee = assignee === "all" || task.assignee === assignee;
+    const byAssignee = assignee === "all" || String(task.assignee_id) === assignee;
     const byDifficulty = difficulty === "all" || task.difficulty === Number(difficulty);
 
     return byStatus && byAssignee && byDifficulty;
@@ -63,7 +63,9 @@ export default function TasksPage() {
         <select id="assignee" value={assignee} onChange={(event) => setAssignee(event.target.value)}>
           <option value="all">All</option>
           {assignees.map((item) => (
-            <option key={item} value={item}>{item}</option>
+            <option key={item ?? "unassigned"} value={String(item)}>
+              {item ?? "Unassigned"}
+            </option>
           ))}
         </select>
 

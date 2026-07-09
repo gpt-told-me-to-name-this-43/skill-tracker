@@ -1,24 +1,34 @@
 import { useEffect, useState } from "react";
-import { getProfile, getProgress, getSkills, type Profile, type ProfileProgress, type Skill } from "../../api/profileApi";
+import { useNavigate } from "react-router-dom";
+import { getCurrentUser, type User } from "../../api/authApi";
+import { getUserProgress, getUserSkills, type ProfileProgress, type UserSkill } from "../../api/profileApi";
 import ProgressBar from "../../components/ProgressBar/ProgressBar";
+import { useAuth } from "../../context/useAuth";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [skills, setSkills] = useState<Skill[]>([]);
+  const { logout, user: storedUser } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<User | null>(storedUser);
+  const [skills, setSkills] = useState<UserSkill[]>([]);
   const [progress, setProgress] = useState<ProfileProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  async function handleLogout() {
+    await logout();
+    navigate("/login", { replace: true });
+  }
+
   useEffect(() => {
     async function loadProfile() {
       try {
-        const [profileData, skillsData, progressData] = await Promise.all([
-          getProfile(),
-          getSkills(),
-          getProgress(),
+        const currentUser = storedUser ?? await getCurrentUser();
+        const [skillsData, progressData] = await Promise.all([
+          getUserSkills(currentUser.id),
+          getUserProgress(currentUser.id),
         ]);
 
-        setProfile(profileData);
+        setProfile(currentUser);
         setSkills(skillsData);
         setProgress(progressData);
       } catch {
@@ -29,7 +39,7 @@ export default function ProfilePage() {
     }
 
     loadProfile();
-  }, []);
+  }, [storedUser]);
 
   if (loading) {
     return (
@@ -49,29 +59,36 @@ export default function ProfilePage() {
 
   return (
     <main className="page-shell">
-      <header className="page-header">
-        <p>Profile</p>
-        <h1>{profile.name}</h1>
+      <header className="page-header page-header-row">
+        <section>
+          <p>Profile</p>
+          <h1>{profile.username}</h1>
+        </section>
+        <button className="button-secondary" onClick={handleLogout} type="button">
+          Выйти
+        </button>
       </header>
 
       <section className="page-panel">
         <dl className="profile-info">
           <dt>Email</dt>
           <dd>{profile.email}</dd>
+          <dt>Role</dt>
+          <dd>{profile.role}</dd>
           <dt>Total XP</dt>
-          <dd>{profile.totalXp}</dd>
+          <dd>{progress.total_experience}</dd>
           <dt>Average Level</dt>
-          <dd>{progress.averageLevel}</dd>
+          <dd>{progress.average_level}</dd>
         </dl>
 
         <h2>Skills</h2>
         {skills.length === 0 && <p>Навыки пока не добавлены.</p>}
-        {skills.map((skill) => (
-          <article className="skill-row" key={skill.id}>
-            <span>{skill.name}</span>
-            <ProgressBar max={10} value={skill.level} />
-            <strong>Lvl {skill.level}</strong>
-            <small>{skill.experience} XP</small>
+        {skills.map((item) => (
+          <article className="skill-row" key={item.skill.id}>
+            <span>{item.skill.name}</span>
+            <ProgressBar max={100} value={item.progress_to_next_level} />
+            <strong>Lvl {item.level}</strong>
+            <small>{item.experience} XP</small>
           </article>
         ))}
       </section>

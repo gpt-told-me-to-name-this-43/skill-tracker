@@ -6,8 +6,11 @@ export type Task = {
   description: string;
   status: TaskStatus;
   difficulty: number;
-  deadline: string;
-  assignee: string;
-  createdAt: string;
-  updatedAt: string;
+  deadline: string | null;
+  creator_id: number;
+  assignee_id: number | null;
+  approved_by_id: number | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
 };

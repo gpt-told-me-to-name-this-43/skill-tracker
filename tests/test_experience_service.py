@@ -17,7 +17,7 @@ from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.task_repo import TaskRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.experience import TaskSkillItem, TaskSkillsSet
-from app.services.exceptions import NotFoundError
+from app.services.exceptions import BadRequestError, NotFoundError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.task_service import TaskService
 
@@ -94,12 +94,20 @@ class FakeTaskRepo:
     async def get_task_by_id(self, task_id: int):
         return self.tasks.get(task_id)
 
-    async def set_status(self, task: Task, status: TaskStatus):
+    async def set_status(self, task: Task, status: TaskStatus, clear_approval: bool = False):
         task.status = status
+        if clear_approval:
+            task.approved_by_id = None
+            task.approved_at = None
         return task
 
     async def set_assignee(self, task: Task, assignee_id: int | None):
         task.assignee_id = assignee_id
+        return task
+
+    async def approve_task(self, task: Task, approver_id: int, approved_at):
+        task.approved_by_id = approver_id
+        task.approved_at = approved_at
         return task
 
 
@@ -128,7 +136,13 @@ class FailingAfterWriteAwarder(DefaultExperienceAwarder):
         raise RuntimeError("award failed after writes")
 
 
-def task(task_id: int, assignee_id: int | None = 10, status: TaskStatus = TaskStatus.todo) -> Task:
+def task(
+    task_id: int,
+    assignee_id: int | None = 10,
+    status: TaskStatus = TaskStatus.todo,
+    approved_by_id: int | None = None,
+    approved_at: datetime | None = None,
+) -> Task:
     return Task(
         id=task_id,
         title=f"Task {task_id}",
@@ -136,6 +150,8 @@ def task(task_id: int, assignee_id: int | None = 10, status: TaskStatus = TaskSt
         difficulty=3,
         creator_id=1,
         assignee_id=assignee_id,
+        approved_by_id=approved_by_id,
+        approved_at=approved_at,
     )
 
 
@@ -228,7 +244,12 @@ async def test_edge_u6_award_creates_missing_user_skill():
 
 
 async def test_task_service_done_transition_awards_once_and_done_to_done_does_not_repeat():
-    task_model = task(1)
+    task_model = task(
+        1,
+        status=TaskStatus.review,
+        approved_by_id=20,
+        approved_at=datetime.now(UTC),
+    )
     exp_repo = FakeExperienceRepo()
     exp_repo.task_skills[1] = [task_skill(task_id=1, skill_id=1, exp_reward=50)]
     service = TaskService(
@@ -245,8 +266,103 @@ async def test_task_service_done_transition_awards_once_and_done_to_done_does_no
     assert len(exp_repo.logs) == 1
 
 
+async def test_task_service_rejects_direct_done_transition_before_review():
+    task_model = task(1, status=TaskStatus.todo)
+    exp_repo = FakeExperienceRepo()
+    service = TaskService(
+        task_repo=FakeTaskRepo([task_model]),
+        user_repo=FakeUserRepo([user(10)]),
+        experience_awarder=DefaultExperienceAwarder(exp_repo),
+    )
+
+    with pytest.raises(BadRequestError, match="only from review"):
+        await service.change_status(1, TaskStatus.done)
+
+    assert task_model.status == TaskStatus.todo
+    assert exp_repo.logs == []
+
+
+async def test_task_service_rejects_done_transition_without_approval():
+    task_model = task(1, status=TaskStatus.review)
+    exp_repo = FakeExperienceRepo()
+    service = TaskService(
+        task_repo=FakeTaskRepo([task_model]),
+        user_repo=FakeUserRepo([user(10)]),
+        experience_awarder=DefaultExperienceAwarder(exp_repo),
+    )
+
+    with pytest.raises(BadRequestError, match="approved"):
+        await service.change_status(1, TaskStatus.done)
+
+    assert task_model.status == TaskStatus.review
+    assert exp_repo.logs == []
+
+
+async def test_task_service_approve_review_task_allows_done_transition():
+    task_model = task(1, status=TaskStatus.review)
+    exp_repo = FakeExperienceRepo()
+    exp_repo.task_skills[1] = [task_skill(task_id=1, skill_id=1, exp_reward=50)]
+    service = TaskService(
+        task_repo=FakeTaskRepo([task_model]),
+        user_repo=FakeUserRepo([user(10), user(20)]),
+        experience_awarder=DefaultExperienceAwarder(exp_repo),
+    )
+
+    approved = await service.approve_task(1, approver_id=20)
+    done_task = await service.change_status(1, TaskStatus.done)
+
+    assert approved.approved_by_id == 20
+    assert approved.approved_at is not None
+    assert done_task.status == TaskStatus.done
+    assert exp_repo.user_skills[(10, 1)].experience == 50
+
+
+async def test_task_service_approval_resets_when_task_leaves_review_before_done():
+    task_model = task(
+        1,
+        status=TaskStatus.review,
+        approved_by_id=20,
+        approved_at=datetime.now(UTC),
+    )
+    service = TaskService(
+        task_repo=FakeTaskRepo([task_model]),
+        user_repo=FakeUserRepo([user(10), user(20)]),
+        experience_awarder=DefaultExperienceAwarder(FakeExperienceRepo()),
+    )
+
+    await service.change_status(1, TaskStatus.in_progress)
+
+    assert task_model.approved_by_id is None
+    assert task_model.approved_at is None
+
+
+async def test_task_service_approval_resets_when_done_task_is_reopened():
+    task_model = task(
+        1,
+        status=TaskStatus.done,
+        approved_by_id=20,
+        approved_at=datetime.now(UTC),
+    )
+    service = TaskService(
+        task_repo=FakeTaskRepo([task_model]),
+        user_repo=FakeUserRepo([user(10), user(20)]),
+        experience_awarder=DefaultExperienceAwarder(FakeExperienceRepo()),
+    )
+
+    await service.change_status(1, TaskStatus.in_progress)
+
+    assert task_model.status == TaskStatus.in_progress
+    assert task_model.approved_by_id is None
+    assert task_model.approved_at is None
+
+
 async def test_edge_u2_reassign_after_done_does_not_move_xp():
-    task_model = task(1)
+    task_model = task(
+        1,
+        status=TaskStatus.review,
+        approved_by_id=20,
+        approved_at=datetime.now(UTC),
+    )
     exp_repo = FakeExperienceRepo()
     exp_repo.task_skills[1] = [task_skill(task_id=1, skill_id=1, exp_reward=50)]
     service = TaskService(
@@ -265,7 +381,12 @@ async def test_edge_u2_reassign_after_done_does_not_move_xp():
 
 
 async def test_edge_u3_award_error_is_propagated_to_request_transaction():
-    task_model = task(1)
+    task_model = task(
+        1,
+        status=TaskStatus.review,
+        approved_by_id=20,
+        approved_at=datetime.now(UTC),
+    )
     exp_repo = FakeExperienceRepo()
     exp_repo.task_skills[1] = [task_skill(task_id=1, skill_id=1, exp_reward=50)]
     exp_repo.fail_on_create_log = True
@@ -393,10 +514,12 @@ async def seed_award_data(session_factory, exp_reward: int = 50) -> None:
         task_model = Task(
             id=1,
             title="Done task",
-            status=TaskStatus.todo,
+            status=TaskStatus.review,
             difficulty=3,
             creator_id=creator.id,
             assignee_id=user_model.id,
+            approved_by_id=creator.id,
+            approved_at=datetime.now(UTC).replace(tzinfo=None),
         )
         reward = TaskSkill(task_id=task_model.id, skill_id=skill_model.id, exp_reward=exp_reward)
         session.add_all([creator, user_model, skill_model, task_model, reward])
@@ -426,7 +549,7 @@ async def test_real_session_rollback_keeps_task_todo_and_xp_unchanged_on_award_e
                 select(UserSkill).where(UserSkill.user_id == 10, UserSkill.skill_id == 1)
             )
 
-        assert task_status == TaskStatus.todo
+        assert task_status == TaskStatus.review
         assert log_count == 0
         assert user_skill is None
     finally:

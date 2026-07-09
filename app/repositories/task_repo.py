@@ -49,14 +49,29 @@ class TaskRepository:
         await self.session.refresh(task)
         return task
 
-    async def set_status(self, task: Task, status: TaskStatus) -> Task:
+    async def set_status(
+        self,
+        task: Task,
+        status: TaskStatus,
+        clear_approval: bool = False,
+    ) -> Task:
         task.status = status
+        if clear_approval:
+            task.approved_by_id = None
+            task.approved_at = None
         await self.session.flush()
         await self.session.refresh(task)
         return task
 
     async def set_assignee(self, task: Task, assignee_id: int | None) -> Task:
         task.assignee_id = assignee_id
+        await self.session.flush()
+        await self.session.refresh(task)
+        return task
+
+    async def approve_task(self, task: Task, approver_id: int, approved_at) -> Task:
+        task.approved_by_id = approver_id
+        task.approved_at = approved_at
         await self.session.flush()
         await self.session.refresh(task)
         return task

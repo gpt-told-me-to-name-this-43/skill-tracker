@@ -10,8 +10,8 @@ export default function TaskCard({ task }: { task: Task }) {
         <h2>{task.title}</h2>
         <StatusBadge status={task.status} />
         <p>Difficulty: {task.difficulty}/5</p>
-        <p>Assignee: {task.assignee}</p>
-        <p>Deadline: {task.deadline}</p>
+        <p>Assignee: {task.assignee_id ?? "Unassigned"}</p>
+        <p>Deadline: {task.deadline ?? "No deadline"}</p>
       </article>
     </Link>
   );
