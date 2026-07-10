@@ -7,7 +7,7 @@ import ProgressBar from "../../components/ProgressBar/ProgressBar";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
 import { useAuth } from "../../context/useAuth";
-import type { Task, TaskStatus } from "../../types/task";
+import type { TaskListItem, TaskStatus } from "../../types/task";
 
 type ProfileView = "overview" | "work" | "activity";
 
@@ -28,15 +28,11 @@ function getInitials(user: User) {
     .join("") || "U";
 }
 
-function getTeamName(user: User) {
-  return user.team || "Project Team";
-}
-
 function getAvailability(user: User) {
-  return user.status || "Active";
+  return user.member_status;
 }
 
-function getTaskDate(task: Task) {
+function getTaskDate(task: TaskListItem) {
   return task.updated_at || task.created_at;
 }
 
@@ -46,7 +42,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<User | null>(storedUser);
   const [skills, setSkills] = useState<UserSkill[]>([]);
   const [progress, setProgress] = useState<ProfileProgress | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [profileView, setProfileView] = useState<ProfileView>("overview");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,8 +92,8 @@ export default function ProfilePage() {
     );
   }
 
-  const assignedTasks = tasks.filter((task) => task.assignee_id === profile.id);
-  const createdTasks = tasks.filter((task) => task.creator_id === profile.id);
+  const assignedTasks = tasks.filter((task) => task.assignee?.id === profile.id);
+  const createdTasks = tasks.filter((task) => task.creator.id === profile.id);
   const completedTasks = assignedTasks.filter((task) => task.status === "done");
   const activeTasks = assignedTasks.filter((task) => task.status !== "done");
   const reviewTasks = assignedTasks.filter((task) => task.status === "review");
@@ -126,7 +122,7 @@ export default function ProfilePage() {
           <h1>{profile.username}</h1>
           <ul className="profile-tags">
             <li>{profile.role}</li>
-            <li>{getTeamName(profile)}</li>
+            <li>{profile.position ?? "No position"}</li>
             <li>{getAvailability(profile)}</li>
           </ul>
         </section>
@@ -159,7 +155,7 @@ export default function ProfilePage() {
               <dt>Role</dt>
               <dd>{profile.role}</dd>
               <dt>Team</dt>
-              <dd>{getTeamName(profile)}</dd>
+              <dd>{profile.position ?? "No position"}</dd>
               <dt>Availability</dt>
               <dd>{getAvailability(profile)}</dd>
             </dl>
@@ -283,7 +279,7 @@ export default function ProfilePage() {
                     <span />
                     <section>
                       <p>
-                        {task.creator_id === profile.id ? "Created" : "Worked on"} task
+                        {task.creator.id === profile.id ? "Created" : "Worked on"} task
                         {" "}
                         <Link className="page-link" to={`/tasks/${task.id}`}>#{task.id}</Link>
                       </p>

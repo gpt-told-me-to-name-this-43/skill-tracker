@@ -103,8 +103,6 @@ async def get_current_user(
     if token is None:
         raise UnauthorizedError("Not authenticated")
 
-    # Если токен битый/истёк, auth_service выбросит UnauthorizedError,
-    # который перехватится глобальным обработчиком
     return await auth_service.get_user_from_token(token)
 
 

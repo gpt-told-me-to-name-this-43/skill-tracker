@@ -1,73 +1,111 @@
+import { CSS } from "@dnd-kit/utilities";
 import { Link } from "react-router-dom";
-import type { DragEvent } from "react";
-import type { Task } from "../../types/task";
+import type { Transform } from "@dnd-kit/utilities";
+import type { ButtonHTMLAttributes } from "react";
+import type { TaskListItem } from "../../types/task";
 import StatusBadge from "../StatusBadge/StatusBadge";
 import "./TaskCard.css";
 
 type TaskCardProps = {
-  task: Task;
-  assigneeName?: string;
-  creatorName?: string;
-  onDragStart?: (event: DragEvent<HTMLAnchorElement>, task: Task) => void;
+  task: TaskListItem;
+  attributes?: ButtonHTMLAttributes<HTMLButtonElement>;
+  listeners?: ButtonHTMLAttributes<HTMLButtonElement>;
+  setNodeRef?: (node: HTMLElement | null) => void;
+  transform?: Transform | null;
+  transition?: string;
+  isDragging?: boolean;
 };
+
+function getInitials(name: string) {
+  return name
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+}
+
+function isOverdue(deadline: string | null, status: TaskListItem["status"]) {
+  if (!deadline || status === "done") {
+    return false;
+  }
+
+  return new Date(deadline).getTime() < new Date().setHours(0, 0, 0, 0);
+}
 
 export default function TaskCard({
   task,
-  assigneeName,
-  creatorName,
-  onDragStart,
+  attributes,
+  listeners,
+  setNodeRef,
+  transform,
+  transition,
+  isDragging = false,
 }: TaskCardProps) {
-  const labels = task.labels ?? [];
-  const attachmentsCount = task.attachments?.length ?? 0;
-  const relatedIssuesCount = task.related_issues?.length ?? 0;
+  const style = {
+    transform: CSS.Transform.toString(transform ?? null),
+    transition,
+  };
+  const overdue = isOverdue(task.deadline, task.status);
 
   return (
-    <Link
-      className="task-card"
-      draggable={Boolean(onDragStart)}
-      onDragStart={(event) => onDragStart?.(event, task)}
-      to={`/tasks/${task.id}`}
+    <article
+      className={`task-card ${isDragging ? "is-dragging" : ""}`}
+      ref={setNodeRef}
+      style={style}
     >
-      <article>
+      <Link className="task-card-link" to={`/tasks/${task.id}`}>
         <header className="task-card-header">
           <h2>{task.title}</h2>
           <StatusBadge status={task.status} />
         </header>
 
-        <p>{task.description}</p>
-
-        {labels.length > 0 && (
+        {task.labels.length > 0 && (
           <ul className="label-list">
-            {labels.map((label) => (
-              <li key={label}>{label}</li>
+            {task.labels.map((label) => (
+              <li key={label.id} style={label.color ? { borderColor: label.color } : undefined}>
+                {label.name}
+              </li>
             ))}
           </ul>
         )}
 
-        <dl className="task-card-meta">
+        <section className="task-card-people">
+          <span className="avatar-fallback">
+            {task.assignee?.avatar_url ? (
+              <img alt="" src={task.assignee.avatar_url} />
+            ) : (
+              getInitials(task.assignee?.username ?? "Unassigned")
+            )}
+          </span>
           <div>
-            <dt>Created by</dt>
-            <dd>{task.created_by ?? creatorName ?? `#${task.creator_id}`}</dd>
+            <small>Assignee</small>
+            <strong>{task.assignee?.username ?? "Unassigned"}</strong>
           </div>
-          <div>
-            <dt>Assignee</dt>
-            <dd>{task.assignee ?? assigneeName ?? task.assignee_id ?? "Unassigned"}</dd>
-          </div>
-          <div>
-            <dt>Difficulty</dt>
-            <dd>{task.difficulty}/5</dd>
-          </div>
-          <div>
-            <dt>Deadline</dt>
-            <dd>{task.deadline ?? "No deadline"}</dd>
-          </div>
-        </dl>
+        </section>
+
+        <section className="task-card-meta">
+          <span>{task.difficulty}/5 difficulty</span>
+          <span className={overdue ? "is-overdue" : ""}>
+            {task.deadline ?? "No deadline"}
+          </span>
+        </section>
 
         <footer className="task-card-footer">
-          <span>{attachmentsCount} attachments</span>
-          <span>{relatedIssuesCount} related</span>
+          <span>{task.attachments_count} attachments</span>
+          <span>{task.related_tasks_count} related</span>
         </footer>
-      </article>
-    </Link>
+      </Link>
+
+      <button
+        aria-label={`Move ${task.title}`}
+        className="task-card-drag"
+        type="button"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
+      </button>
+    </article>
   );
 }
