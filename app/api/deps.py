@@ -9,12 +9,14 @@ from app.models.user import User
 from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
 from app.repositories.task_repo import TaskRepository
+from app.repositories.team_repo import TeamRepository
 from app.repositories.user_repo import UserRepository
 from app.services.auth_service import AuthService
 from app.services.exceptions import UnauthorizedError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.skill_service import SkillService
 from app.services.task_service import TaskService
+from app.services.team_service import TeamService
 from app.services.user_service import UserService
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -65,6 +67,13 @@ async def get_user_service(db: DbSession) -> UserService:
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+async def get_team_service(db: DbSession) -> TeamService:
+    return TeamService(TeamRepository(db))
+
+
+TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]
 
 
 class Pagination:

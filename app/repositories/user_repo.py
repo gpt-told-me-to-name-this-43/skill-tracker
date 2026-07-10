@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.models.team import TeamMember
 from app.models.user import User
 
 
@@ -9,7 +11,12 @@ class UserRepository:
         self.session = session
 
     async def get_user_by_id(self, user_id: int) -> User | None:
-        return await self.session.get(User, user_id)
+        result = await self.session.execute(
+            select(User)
+            .where(User.id == user_id)
+            .options(selectinload(User.team_membership).selectinload(TeamMember.team))
+        )
+        return result.scalar_one_or_none()
 
     async def get(self, user_id: int) -> User | None:
         return await self.get_user_by_id(user_id)
@@ -22,11 +29,28 @@ class UserRepository:
         result = await self.session.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
-    async def list_users(self, limit: int, offset: int) -> list[User]:
-        result = await self.session.execute(
-            select(User).limit(limit).offset(offset).order_by(User.id)
+    async def list_users(
+        self,
+        limit: int,
+        offset: int,
+        member_status: str | None = None,
+    ) -> list[User]:
+        query = select(User).options(
+            selectinload(User.team_membership).selectinload(TeamMember.team)
         )
+        if member_status is not None:
+            query = query.where(User.member_status == member_status)
+
+        result = await self.session.execute(query.limit(limit).offset(offset).order_by(User.id))
         return list(result.scalars().all())
+
+    async def update_workspace_profile(self, user: User, fields: dict) -> User:
+        for key, value in fields.items():
+            setattr(user, key, value)
+
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user
 
     async def create_user(
         self, email: str, username: str, hashed_password: str, role: str = "user"

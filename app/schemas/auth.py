@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -12,16 +10,6 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
-
-class UserRead(BaseModel):
-    id: int
-    email: str
-    username: str
-    role: str
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class TokenResponse(BaseModel):
