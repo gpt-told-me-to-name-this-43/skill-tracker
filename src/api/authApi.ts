@@ -5,6 +5,9 @@ export type User = {
   email: string;
   username: string;
   role: string;
+  avatar_url?: string | null;
+  team?: string | null;
+  status?: string | null;
   created_at: string;
 };
 
