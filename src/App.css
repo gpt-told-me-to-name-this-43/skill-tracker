@@ -137,6 +137,31 @@
   max-width: 260px;
 }
 
+.project-tabs {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.project-tabs button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--color-muted);
+  font-weight: 800;
+  background: transparent;
+}
+
+.project-tabs button:hover,
+.project-tabs button.is-active {
+  color: #ffffff;
+  background: var(--color-primary);
+}
+
 .cards-list {
   display: flex;
   flex-wrap: wrap;
@@ -204,10 +229,11 @@
   background: #ffffff;
 }
 
-.project-grid {
+.project-collaboration {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
   gap: 16px;
+  align-items: start;
 }
 
 .page-section {
@@ -229,20 +255,45 @@
   margin: 0;
 }
 
-.people-grid {
+.people-workspace {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.people-list {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.member-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 12px;
 }
 
 .person-card {
+  width: 100%;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
+  align-items: center;
   padding: 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  color: var(--color-text);
+  text-align: left;
   background: #ffffff;
+}
+
+.person-card:hover,
+.person-card.is-selected {
+  border-color: var(--color-primary);
+  background: #eef4ff;
 }
 
 .person-card img,
@@ -265,36 +316,73 @@
   background: var(--color-primary);
 }
 
-.person-card h3,
+.person-card strong,
 .team-row h3 {
   margin: 0;
+  display: block;
   font-size: 16px;
 }
 
-.person-card p,
+.person-card small,
 .team-row p {
   margin: 2px 0 0;
   color: var(--color-muted);
   font-size: 13px;
 }
 
-.person-card dl,
-.team-row dl {
+.person-card em {
   grid-column: 1 / -1;
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #166534;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  background: #dcfce7;
+}
+
+.member-editor,
+.team-form {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.member-editor h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.member-editor label,
+.team-form label {
+  color: #24364b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.member-editor button,
+.team-form button {
+  min-height: 40px;
+  margin-top: 4px;
+}
+
+.team-row dl {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 6px 12px;
   margin: 4px 0 0;
 }
 
-.person-card dt,
 .team-row dt {
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.person-card dd,
 .team-row dd {
   margin: 0;
   color: var(--color-text);
@@ -307,6 +395,10 @@
   gap: 12px;
 }
 
+.team-form {
+  margin-bottom: 14px;
+}
+
 .team-row {
   display: grid;
   gap: 12px;
@@ -314,6 +406,28 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: #ffffff;
+}
+
+.team-members {
+  display: grid;
+  gap: 8px;
+}
+
+.team-members label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(126px, 140px);
+  gap: 8px;
+  align-items: center;
+}
+
+.team-members span {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.team-members select {
+  height: 36px;
 }
 
 .task-form {
@@ -426,6 +540,19 @@
   text-align: right;
 }
 
+@media (max-width: 900px) {
+  .project-collaboration,
+  .people-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .people-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
 @media (max-width: 640px) {
   .navbar {
     align-items: flex-start;
@@ -444,14 +571,36 @@
     flex-direction: column;
   }
 
+  .project-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .project-tabs button {
+    width: 100%;
+  }
+
   .kanban-board,
-  .project-grid,
+  .project-collaboration,
+  .people-workspace,
+  .member-forms,
   .task-detail-grid {
     grid-template-columns: 1fr;
   }
 
   .kanban-column {
     min-width: 0;
+  }
+
+  .people-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .team-members label {
+    grid-template-columns: 1fr;
   }
 
   .toolbar select,
