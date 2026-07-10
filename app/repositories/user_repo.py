@@ -33,11 +33,16 @@ class UserRepository:
         self,
         limit: int,
         offset: int,
+        team_id: int | None = None,
         member_status: str | None = None,
     ) -> list[User]:
         query = select(User).options(
             selectinload(User.team_membership).selectinload(TeamMember.team)
         )
+        if team_id is not None:
+            query = query.join(TeamMember, TeamMember.user_id == User.id).where(
+                TeamMember.team_id == team_id
+            )
         if member_status is not None:
             query = query.where(User.member_status == member_status)
 

@@ -3,9 +3,11 @@ import Navbar from "./Navbar";
 
 export default function Layout() {
   return (
-    <>
+    <section className="app-layout">
       <Navbar />
-      <Outlet />
-    </>
+      <section className="app-content">
+        <Outlet />
+      </section>
+    </section>
   );
 }

@@ -59,9 +59,17 @@ class FakeUserService:
         self,
         limit: int,
         offset: int,
+        team_id: int | None = None,
         member_status: MemberStatus | None = None,
     ) -> list[User]:
         users = self.users
+        if team_id is not None:
+            users = [
+                user
+                for user in users
+                if user.team_membership is not None
+                and user.team_membership.team_id == team_id
+            ]
         if member_status is not None:
             users = [user for user in users if user.member_status == member_status.value]
         return users[offset : offset + limit]
@@ -109,6 +117,29 @@ async def test_list_users_omits_email_and_filters_by_member_status(client):
     assert body[0]["member_status"] == "away"
     assert body[0]["team"] == {"id": 1, "name": "QA Team"}
     assert "email" not in body[0]
+
+
+async def test_list_users_filters_by_team_id(client):
+    service = FakeUserService()
+
+    async def override_user_service() -> FakeUserService:
+        return service
+
+    app.dependency_overrides[get_current_user] = _override_current_user
+    app.dependency_overrides[get_user_service] = override_user_service
+
+    resp = await client.get("/api/v1/users?team_id=1")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["username"] == "away-user"
+    assert body[0]["team"] == {"id": 1, "name": "QA Team"}
+
+    resp = await client.get("/api/v1/users?team_id=99")
+
+    assert resp.status_code == 200
+    assert resp.json() == []
 
 
 async def test_update_workspace_profile_updates_display_fields(client):

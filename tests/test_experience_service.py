@@ -311,9 +311,9 @@ async def test_task_service_approve_review_task_allows_done_transition():
     approved = await service.approve_task(1, approver_id=20)
     done_task = await service.change_status(1, TaskStatus.done)
 
-    assert approved.approved_by_id == 20
-    assert approved.approved_at is not None
-    assert done_task.status == TaskStatus.done
+    assert approved["approved_by_id"] == 20
+    assert approved["approved_at"] is not None
+    assert done_task["status"] == TaskStatus.done
     assert exp_repo.user_skills[(10, 1)].experience == 50
 
 

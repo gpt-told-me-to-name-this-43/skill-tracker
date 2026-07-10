@@ -12,9 +12,10 @@ async def list_users(
     pagination: PaginationDep,
     service: UserServiceDep,
     current_user: CurrentUser,
+    team_id: int | None = None,
     member_status: MemberStatus | None = None,
 ) -> list[UserPublicRead]:
-    return await service.list_users(pagination.limit, pagination.offset, member_status)
+    return await service.list_users(pagination.limit, pagination.offset, team_id, member_status)
 
 
 @router.get("/users/{user_id}", response_model=UserPublicRead)

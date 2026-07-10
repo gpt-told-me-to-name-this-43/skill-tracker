@@ -15,10 +15,11 @@ class UserService:
         self,
         limit: int,
         offset: int,
+        team_id: int | None = None,
         member_status: MemberStatus | None = None,
     ) -> Sequence[User]:
         status_value = member_status.value if member_status is not None else None
-        return await self.user_repo.list_users(limit, offset, status_value)
+        return await self.user_repo.list_users(limit, offset, team_id, status_value)
 
     async def get_user_by_id(self, user_id: int) -> User:
         user = await self.user_repo.get_user_by_id(user_id)

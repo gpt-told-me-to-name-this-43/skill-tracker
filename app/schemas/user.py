@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from app.models.enums import MemberStatus
 
@@ -51,6 +59,14 @@ class UserWorkspaceProfileUpdate(BaseModel):
     @classmethod
     def normalize_text(cls, value: str | None) -> str | None:
         return _normalize_optional_text(value)
+
+    @field_validator("avatar_url", mode="after")
+    @classmethod
+    def validate_avatar_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        TypeAdapter(HttpUrl).validate_python(value)
+        return value
 
     @model_validator(mode="after")
     def validate_member_status(self) -> "UserWorkspaceProfileUpdate":
