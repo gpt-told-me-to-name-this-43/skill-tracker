@@ -120,8 +120,10 @@ export default function TaskDetailsPage() {
       <section className="page-panel">
         <p>{task.description}</p>
         <dl className="details-list">
+          <dt>Created by</dt>
+          <dd>{task.created_by ?? `#${task.creator_id}`}</dd>
           <dt>Assignee</dt>
-          <dd>{task.assignee_id ?? "Unassigned"}</dd>
+          <dd>{task.assignee ?? task.assignee_id ?? "Unassigned"}</dd>
           <dt>Status</dt>
           <dd><StatusBadge status={task.status} /></dd>
           <dt>Approval</dt>
@@ -131,6 +133,54 @@ export default function TaskDetailsPage() {
           <dt>Deadline</dt>
           <dd>{task.deadline ?? "No deadline"}</dd>
         </dl>
+
+        <section className="task-detail-grid">
+          <article>
+            <h2>Labels</h2>
+            {(task.labels?.length ?? 0) > 0 ? (
+              <ul className="label-list">
+                {task.labels?.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No labels</p>
+            )}
+          </article>
+
+          <article>
+            <h2>Attachments</h2>
+            {(task.attachments?.length ?? 0) > 0 ? (
+              <ul className="detail-list">
+                {task.attachments?.map((attachment) => (
+                  <li key={attachment.id}>
+                    {attachment.url ? (
+                      <a className="page-link" href={attachment.url}>{attachment.name}</a>
+                    ) : (
+                      attachment.name
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No attachments</p>
+            )}
+          </article>
+
+          <article>
+            <h2>Related Issues</h2>
+            {(task.related_issues?.length ?? 0) > 0 ? (
+              <ul className="detail-list">
+                {task.related_issues?.map((issue) => (
+                  <li key={issue.id}>#{issue.id} {issue.title}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No related issues</p>
+            )}
+          </article>
+        </section>
+
         <section className="actions-row">
           <button disabled={task.status !== "review" || Boolean(task.approved_at)} onClick={handleApprove} type="button">
             Approve review
