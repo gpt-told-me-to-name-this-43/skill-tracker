@@ -2,22 +2,38 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
 const projectLinks = [
-  { to: "/tasks", label: "Board" },
-  { to: "/tasks/new", label: "Create Task" },
-  { to: "/people", label: "People" },
-  { to: "/teams", label: "Teams" },
+  { to: "/tasks", label: "Board", shortLabel: "B" },
+  { to: "/tasks/new", label: "Create Task", shortLabel: "+" },
+  { to: "/people", label: "People", shortLabel: "P" },
+  { to: "/teams", label: "Teams", shortLabel: "T" },
 ];
 
-export default function Navbar() {
+type NavbarProps = {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+};
+
+export default function Navbar({ collapsed, onToggleCollapsed }: NavbarProps) {
   const { user } = useAuth();
   const canManageProject = user?.role === "admin";
 
   return (
     <aside className="navbar">
-      <NavLink className="navbar-logo" to="/tasks">
-        <span>ST</span>
-        Skill Tracker
-      </NavLink>
+      <section className="sidebar-top">
+        <NavLink className="navbar-logo" to="/tasks" title="Skill Tracker">
+          <span>ST</span>
+          <strong>Skill Tracker</strong>
+        </NavLink>
+
+        <button
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="sidebar-toggle"
+          onClick={onToggleCollapsed}
+          type="button"
+        >
+          {collapsed ? ">" : "<"}
+        </button>
+      </section>
 
       <section className="sidebar-project">
         <p>Project</p>
@@ -27,8 +43,9 @@ export default function Navbar() {
 
       <nav className="sidebar-nav" aria-label="Project navigation">
         {projectLinks.map((link) => (
-          <NavLink className="navbar-link" key={link.to} to={link.to}>
-            {link.label}
+          <NavLink className="navbar-link" key={link.to} title={link.label} to={link.to}>
+            <span className="nav-short">{link.shortLabel}</span>
+            <span className="nav-label">{link.label}</span>
           </NavLink>
         ))}
       </nav>
@@ -38,8 +55,9 @@ export default function Navbar() {
         <p>{canManageProject ? "You can manage members and teams." : "Ask an admin to change members or teams."}</p>
       </section>
 
-      <NavLink className="navbar-link profile-link" to="/profile">
-        Profile
+      <NavLink className="navbar-link profile-link" title="Profile" to="/profile">
+        <span className="nav-short">U</span>
+        <span className="nav-label">Profile</span>
       </NavLink>
     </aside>
   );

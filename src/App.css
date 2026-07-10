@@ -2,6 +2,11 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
+  transition: grid-template-columns 180ms ease;
+}
+
+.app-layout.sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
 }
 
 .app-content {
@@ -21,6 +26,13 @@
   border-right: 1px solid var(--color-border);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
+  transition: width 180ms ease, padding 180ms ease;
+}
+
+.sidebar-collapsed .navbar {
+  width: 72px;
+  gap: 14px;
+  padding: 16px 10px;
 }
 
 .navbar-logo,
@@ -35,8 +47,15 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   color: var(--color-primary);
   font-size: 18px;
+}
+
+.navbar-logo strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .navbar-logo span {
@@ -59,10 +78,33 @@
   align-items: center;
   padding: 8px 10px;
   border-radius: var(--radius);
+  gap: 10px;
 }
 
 .navbar-link.active,
 .navbar-link:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.sidebar-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+}
+
+.sidebar-toggle {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.sidebar-toggle:hover {
   color: var(--color-primary);
   background: var(--color-primary-soft);
 }
@@ -104,6 +146,26 @@
   gap: 4px;
 }
 
+.nav-short {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-primary-dark);
+  font-size: 12px;
+  font-weight: 900;
+  background: var(--color-primary-soft);
+}
+
+.nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-access {
   align-self: end;
   display: grid;
@@ -126,6 +188,47 @@
 
 .profile-link {
   align-self: end;
+}
+
+.sidebar-collapsed .sidebar-top {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.sidebar-collapsed .navbar-logo {
+  justify-content: center;
+}
+
+.sidebar-collapsed .navbar-logo strong,
+.sidebar-collapsed .sidebar-project h2,
+.sidebar-collapsed .sidebar-project small,
+.sidebar-collapsed .sidebar-access,
+.sidebar-collapsed .nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.sidebar-collapsed .sidebar-project {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.sidebar-collapsed .sidebar-project p {
+  font-size: 10px;
+}
+
+.sidebar-collapsed .navbar-link {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar-collapsed .sidebar-toggle {
+  width: 100%;
 }
 
 .page-shell {
@@ -1198,19 +1301,62 @@
 }
 
 @media (max-width: 900px) {
-  .app-layout {
+  .app-layout,
+  .app-layout.sidebar-collapsed {
     grid-template-columns: 1fr;
   }
 
-  .navbar {
+  .navbar,
+  .sidebar-collapsed .navbar {
     position: static;
     width: 100%;
     height: auto;
     grid-template-columns: 1fr;
     grid-template-rows: none;
     gap: 12px;
+    padding: 20px 16px;
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .sidebar-collapsed .sidebar-top {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    justify-items: stretch;
+  }
+
+  .sidebar-collapsed .navbar-logo {
+    justify-content: flex-start;
+  }
+
+  .sidebar-collapsed .navbar-logo strong,
+  .sidebar-collapsed .sidebar-project h2,
+  .sidebar-collapsed .sidebar-project small,
+  .sidebar-collapsed .sidebar-access,
+  .sidebar-collapsed .nav-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .sidebar-collapsed .sidebar-project {
+    padding: 12px;
+    text-align: left;
+  }
+
+  .sidebar-collapsed .sidebar-project p {
+    font-size: 12px;
+  }
+
+  .sidebar-collapsed .navbar-link {
+    justify-content: flex-start;
+    padding: 8px 10px;
+  }
+
+  .sidebar-collapsed .sidebar-toggle {
+    width: 34px;
   }
 
   .sidebar-nav {
