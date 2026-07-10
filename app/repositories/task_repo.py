@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -106,7 +106,9 @@ class TaskRepository:
         return list(result.scalars().all())
 
     async def get_label_by_name_ci(self, name: str) -> Label | None:
-        result = await self.session.execute(select(Label).where(Label.name.ilike(name)))
+        result = await self.session.execute(
+            select(Label).where(func.lower(Label.name) == name.lower())
+        )
         return result.scalar_one_or_none()
 
     async def get_labels_by_ids(self, label_ids: Sequence[int]) -> list[Label]:

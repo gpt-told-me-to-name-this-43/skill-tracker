@@ -67,8 +67,7 @@ class FakeUserService:
             users = [
                 user
                 for user in users
-                if user.team_membership is not None
-                and user.team_membership.team_id == team_id
+                if user.team_membership is not None and user.team_membership.team_id == team_id
             ]
         if member_status is not None:
             users = [user for user in users if user.member_status == member_status.value]

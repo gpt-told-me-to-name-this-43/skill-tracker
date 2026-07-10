@@ -111,8 +111,14 @@ class TaskRelation(Base, IntPKMixin):
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    left_task: Mapped[Task] = relationship(foreign_keys=[left_task_id])
-    right_task: Mapped[Task] = relationship(foreign_keys=[right_task_id])
+    left_task: Mapped[Task] = relationship(
+        foreign_keys=[left_task_id],
+        overlaps="left_relations",
+    )
+    right_task: Mapped[Task] = relationship(
+        foreign_keys=[right_task_id],
+        overlaps="right_relations",
+    )
 
     __table_args__ = (
         UniqueConstraint("left_task_id", "right_task_id", name="uq_task_relation"),
