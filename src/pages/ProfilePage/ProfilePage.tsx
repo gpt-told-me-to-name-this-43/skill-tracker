@@ -8,6 +8,7 @@ import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
 import { useAuth } from "../../context/useAuth";
 import type { TaskListItem, TaskStatus } from "../../types/task";
+import { formatDateTime, formatDeadline } from "../../utils/dateTime";
 
 type ProfileView = "overview" | "work" | "activity";
 
@@ -67,7 +68,7 @@ export default function ProfilePage() {
         setProgress(progressData);
         setTasks(tasksData);
       } catch {
-        setError("Не удалось загрузить профиль.");
+        setError("Could not load the profile.");
       } finally {
         setLoading(false);
       }
@@ -79,7 +80,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <main className="page-shell">
-        <section className="page-panel">Загрузка профиля...</section>
+        <section className="page-panel">Loading profile...</section>
       </main>
     );
   }
@@ -87,7 +88,7 @@ export default function ProfilePage() {
   if (error || !profile || !progress) {
     return (
       <main className="page-shell">
-        <section className="page-panel state-error">{error || "Профиль не найден."}</section>
+        <section className="page-panel state-error">{error || "Profile not found."}</section>
       </main>
     );
   }
@@ -128,7 +129,7 @@ export default function ProfilePage() {
         </section>
 
         <button className="button-secondary" onClick={handleLogout} type="button">
-          Выйти
+          Log out
         </button>
       </section>
 
@@ -163,7 +164,7 @@ export default function ProfilePage() {
 
           <section className="page-panel profile-card">
             <h2>Skills</h2>
-            {skills.length === 0 && <p>Навыки пока не добавлены.</p>}
+            {skills.length === 0 && <p>No skills have been added yet.</p>}
             <section className="profile-skills">
               {skills.map((item) => (
                 <article className="skill-row" key={item.skill.id}>
@@ -220,7 +221,7 @@ export default function ProfilePage() {
                   <p>Contribution</p>
                   <h2>Created by user</h2>
                 </header>
-                {createdTasks.length === 0 && <p>Пока нет созданных задач.</p>}
+                {createdTasks.length === 0 && <p>No created tasks yet.</p>}
                 <section className="profile-task-list">
                   {createdTasks.slice(0, 4).map((task) => (
                     <Link className="profile-task-row" key={task.id} to={`/tasks/${task.id}`}>
@@ -240,7 +241,7 @@ export default function ProfilePage() {
                 <p>Assigned Work</p>
                 <h2>Tasks assigned to {profile.username}</h2>
               </header>
-              {assignedTasks.length === 0 && <p>Назначенных задач пока нет.</p>}
+              {assignedTasks.length === 0 && <p>No assigned tasks yet.</p>}
               <section className="profile-work-columns">
                 {workStatuses.map((status) => {
                   const statusTasks = assignedTasks.filter((task) => task.status === status);
@@ -256,7 +257,7 @@ export default function ProfilePage() {
                         <Link className="profile-task-row" key={task.id} to={`/tasks/${task.id}`}>
                           <span>#{task.id}</span>
                           <strong>{task.title}</strong>
-                          <small>{task.deadline ?? "No deadline"}</small>
+                          <small>{formatDeadline(task.deadline)}</small>
                         </Link>
                       ))}
                     </article>
@@ -272,7 +273,7 @@ export default function ProfilePage() {
                 <p>Activity</p>
                 <h2>Recent work activity</h2>
               </header>
-              {activityItems.length === 0 && <p>Активности пока нет.</p>}
+              {activityItems.length === 0 && <p>No activity yet.</p>}
               <ol className="activity-list">
                 {activityItems.map((task) => (
                   <li key={task.id}>
@@ -284,7 +285,7 @@ export default function ProfilePage() {
                         <Link className="page-link" to={`/tasks/${task.id}`}>#{task.id}</Link>
                       </p>
                       <strong>{task.title}</strong>
-                      <small>{statusLabels[task.status]} · {getTaskDate(task)}</small>
+                      <small>{statusLabels[task.status]} · {formatDateTime(getTaskDate(task))}</small>
                     </section>
                   </li>
                 ))}

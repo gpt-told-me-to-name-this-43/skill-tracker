@@ -1,6 +1,9 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
 
+from app.core.config import settings
 from app.models.enums import TaskStatus
 from app.models.task import Label, Task, TaskAttachment
 from app.repositories.task_repo import TaskRepository
@@ -270,6 +273,40 @@ class TaskService:
             task_id,
             data.name,
             data.url,
+            created_by_id,
+        )
+        return _serialize_attachment(attachment)
+
+    async def create_uploaded_attachment(
+        self,
+        task_id: int,
+        filename: str,
+        content: bytes,
+        created_by_id: int,
+    ) -> dict:
+        await self.get_task_model_by_id(task_id)
+        await self._ensure_user_exists(created_by_id)
+        if not content:
+            raise BadRequestError("Uploaded file is empty")
+
+        original_name = Path(filename).name or "attachment"
+        safe_name = "".join(
+            char if char.isalnum() or char in {".", "-", "_"} else "-"
+            for char in original_name
+        ).strip(".-")
+        if not safe_name:
+            safe_name = "attachment"
+
+        upload_dir = Path(settings.upload_dir) / "task-attachments"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        stored_name = f"{uuid4().hex}-{safe_name}"
+        file_path = upload_dir / stored_name
+        file_path.write_bytes(content)
+
+        attachment = await self.task_repo.create_attachment(
+            task_id,
+            original_name,
+            f"/uploads/task-attachments/{stored_name}",
             created_by_id,
         )
         return _serialize_attachment(attachment)

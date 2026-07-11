@@ -46,6 +46,17 @@ export type TaskAttachment = {
   created_at: string;
 };
 
+export type Skill = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+export type TaskSkill = {
+  skill: Skill;
+  exp_reward: number;
+};
+
 export type RelatedTask = {
   id: number;
   title: string;

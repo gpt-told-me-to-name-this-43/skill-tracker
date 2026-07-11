@@ -32,6 +32,12 @@ type DemoAttachment = {
   created_at: string
 }
 
+type DemoSkill = {
+  id: number
+  name: string
+  description: string | null
+}
+
 type DemoTeam = {
   id: number
   name: string
@@ -78,6 +84,13 @@ const demoLabels: DemoLabel[] = [
   { id: 8, name: 'Enhancement', color: '#0f766e', created_at: today, updated_at: today },
 ]
 
+const demoSkills: DemoSkill[] = [
+  { id: 1, name: 'React', description: null },
+  { id: 2, name: 'TypeScript', description: null },
+  { id: 3, name: 'FastAPI', description: null },
+  { id: 4, name: 'Testing', description: null },
+]
+
 const demoTeams: DemoTeam[] = [
   { id: 1, name: 'Frontend Team', description: 'Builds the product interface.', lead_id: 1, member_ids: [1], created_at: today, updated_at: today },
   { id: 2, name: 'Backend Team', description: 'Owns API and domain logic.', lead_id: 2, member_ids: [2], created_at: today, updated_at: today },
@@ -102,6 +115,12 @@ let demoRelations = [
   { left_task_id: 1, right_task_id: 4 },
   { left_task_id: 2, right_task_id: 3 },
 ]
+
+let demoTaskSkills: Record<number, { skill_id: number; exp_reward: number }[]> = {
+  1: [{ skill_id: 2, exp_reward: 80 }, { skill_id: 1, exp_reward: 60 }],
+  2: [{ skill_id: 1, exp_reward: 120 }],
+  3: [{ skill_id: 4, exp_reward: 90 }],
+}
 
 function userSummary(userId: number | null) {
   const user = demoUsers.find((item) => item.id === userId)
@@ -203,6 +222,33 @@ async function readBody(req: { on: (event: string, callback: (chunk?: Buffer) =>
       resolve(body ? JSON.parse(body) : {})
     })
   })
+}
+
+async function readRawBody(req: { on: (event: string, callback: (chunk?: Buffer) => void) => void }) {
+  const chunks: Buffer[] = []
+
+  return new Promise<Buffer>((resolve) => {
+    req.on('data', (chunk) => {
+      if (chunk) {
+        chunks.push(chunk)
+      }
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+  })
+}
+
+function parseMultipartFilename(body: Buffer) {
+  const text = body.toString('latin1', 0, Math.min(body.length, 2000))
+  return text.match(/filename="([^"]+)"/)?.[1] ?? 'uploaded-file'
+}
+
+function taskSkillDto(taskId: number) {
+  return (demoTaskSkills[taskId] ?? [])
+    .map((item) => ({
+      skill: demoSkills.find((skill) => skill.id === item.skill_id),
+      exp_reward: item.exp_reward,
+    }))
+    .filter((item) => Boolean(item.skill))
 }
 
 function parseQuery(url: string) {
@@ -344,6 +390,11 @@ function demoApiPlugin() {
           return
         }
 
+        if (path === '/api/v1/skills' && method === 'GET') {
+          sendJson(res, 200, demoSkills)
+          return
+        }
+
         if (path.match(/^\/api\/v1\/users\/\d+\/progress$/) && method === 'GET') {
           sendJson(res, 200, { user_id: 1, total_experience: 1360, skills_count: 2, average_level: 6.5, skills: [] })
           return
@@ -396,6 +447,30 @@ function demoApiPlugin() {
           return
         }
 
+        if (taskMatch && method === 'PATCH') {
+          const body = await readBody(req)
+          const task = demoTasks.find((item) => item.id === Number(taskMatch[1]))
+          if (!task) {
+            sendJson(res, 404, { detail: 'Task not found' })
+            return
+          }
+          if (typeof body.title === 'string') {
+            task.title = body.title
+          }
+          if (typeof body.description === 'string' || body.description === null) {
+            task.description = body.description ?? ''
+          }
+          if (typeof body.difficulty === 'number') {
+            task.difficulty = body.difficulty
+          }
+          if (typeof body.deadline === 'string' || body.deadline === null) {
+            task.deadline = body.deadline
+          }
+          task.updated_at = today
+          sendJson(res, 200, taskDto(task, true))
+          return
+        }
+
         const statusMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/status$/)
         if (statusMatch && method === 'PATCH') {
           const body = await readBody(req)
@@ -424,6 +499,22 @@ function demoApiPlugin() {
           return
         }
 
+        const taskSkillsMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/skills$/)
+        if (taskSkillsMatch && method === 'GET') {
+          sendJson(res, 200, taskSkillDto(Number(taskSkillsMatch[1])))
+          return
+        }
+
+        if (taskSkillsMatch && method === 'PUT') {
+          const body = await readBody(req)
+          const taskId = Number(taskSkillsMatch[1])
+          demoTaskSkills[taskId] = Array.isArray(body.skills)
+            ? body.skills.map((item: any) => ({ skill_id: Number(item.skill_id), exp_reward: Number(item.exp_reward) }))
+            : []
+          sendJson(res, 200, taskSkillDto(taskId))
+          return
+        }
+
         const taskLabelsMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/labels$/)
         if (taskLabelsMatch && method === 'PUT') {
           const body = await readBody(req)
@@ -446,6 +537,22 @@ function demoApiPlugin() {
             task_id: Number(attachmentMatch[1]),
             name: String(body.name),
             url: String(body.url),
+            created_by_id: 1,
+            created_at: today,
+          }
+          demoAttachments = [...demoAttachments, attachment]
+          sendJson(res, 201, { ...attachment, created_by: userSummary(1) })
+          return
+        }
+
+        const attachmentUploadMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/attachments\/upload$/)
+        if (attachmentUploadMatch && method === 'POST') {
+          const body = await readRawBody(req)
+          const attachment: DemoAttachment = {
+            id: Math.max(0, ...demoAttachments.map((item) => item.id)) + 1,
+            task_id: Number(attachmentUploadMatch[1]),
+            name: parseMultipartFilename(body),
+            url: 'https://example.com/uploaded-file',
             created_by_id: 1,
             created_at: today,
           }

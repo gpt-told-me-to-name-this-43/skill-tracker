@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { DragEvent, FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   approveTask,
   createTaskAttachment,
   deleteTaskAttachment,
   getLabels,
+  getSkills,
   getTaskById,
+  getTaskSkills,
   getTasks,
   setRelatedTasks,
   setTaskLabels,
+  setTaskSkills,
+  updateTask,
   updateTaskStatus,
+  uploadTaskAttachment,
 } from "../../api/tasksApi";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
-import type { Label, TaskDetail, TaskListItem, TaskStatus } from "../../types/task";
+import type { Label, Skill, TaskDetail, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
+import { formatDateTime, toApiDateTime, toDateTimeLocalInput } from "../../utils/dateTime";
 
 const statuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
 
@@ -39,10 +45,15 @@ export default function TaskDetailsPage() {
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [allTasks, setAllTasks] = useState<TaskListItem[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [taskSkills, setTaskSkillsState] = useState<TaskSkill[]>([]);
   const [selectedLabels, setSelectedLabels] = useState<number[]>([]);
   const [selectedRelated, setSelectedRelated] = useState<number[]>([]);
+  const [selectedSkillRewards, setSelectedSkillRewards] = useState<Record<number, number>>({});
+  const [deadlineInput, setDeadlineInput] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -57,30 +68,38 @@ export default function TaskDetailsPage() {
   useEffect(() => {
     async function loadTask() {
       if (!taskNumericId) {
-        setError("Некорректный id задачи.");
+        setError("Invalid task id.");
         setLoading(false);
         return;
       }
 
       try {
-        const [taskData, labelsData, tasksData] = await Promise.all([
+        const [taskData, labelsData, tasksData, skillsData, taskSkillsData] = await Promise.all([
           getTaskById(taskNumericId),
           getLabels(),
           getTasks(),
+          getSkills(),
+          getTaskSkills(taskNumericId),
         ]);
 
         if (!taskData) {
-          setError("Задача не найдена.");
+          setError("Task not found.");
           return;
         }
 
         setTask(taskData);
         setLabels(labelsData);
         setAllTasks(tasksData);
+        setSkills(skillsData);
+        setTaskSkillsState(taskSkillsData);
         setSelectedLabels(taskData.labels.map((label) => label.id));
         setSelectedRelated(taskData.related_tasks.map((item) => item.id));
+        setSelectedSkillRewards(Object.fromEntries(
+          taskSkillsData.map((item) => [item.skill.id, item.exp_reward]),
+        ));
+        setDeadlineInput(toDateTimeLocalInput(taskData.deadline));
       } catch {
-        setError("Не удалось загрузить задачу.");
+        setError("Could not load the task.");
       } finally {
         setLoading(false);
       }
@@ -104,7 +123,7 @@ export default function TaskDetailsPage() {
 
       setTask(updatedTask);
     } catch {
-      setStatusError("Не удалось обновить статус задачи.");
+      setStatusError("Could not update the task status.");
     }
   }
 
@@ -123,7 +142,28 @@ export default function TaskDetailsPage() {
 
       setTask(approvedTask);
     } catch {
-      setStatusError("Не удалось апрувнуть задачу.");
+      setStatusError("Could not approve the task.");
+    }
+  }
+
+  async function handleSaveDeadline(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!task) {
+      return;
+    }
+
+    setSaving(true);
+    setStatusError("");
+    try {
+      const updatedTask = await updateTask(task.id, {
+        deadline: deadlineInput ? toApiDateTime(deadlineInput) : null,
+      });
+      setTask(updatedTask);
+      setDeadlineInput(toDateTimeLocalInput(updatedTask.deadline));
+    } catch {
+      setStatusError("Could not save the deadline.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -138,7 +178,7 @@ export default function TaskDetailsPage() {
       const updatedTask = await setTaskLabels(task.id, selectedLabels);
       setTask(updatedTask);
     } catch {
-      setStatusError("Не удалось сохранить метки.");
+      setStatusError("Could not save labels.");
     } finally {
       setSaving(false);
     }
@@ -161,10 +201,52 @@ export default function TaskDetailsPage() {
       setAttachmentName("");
       setAttachmentUrl("");
     } catch {
-      setStatusError("Не удалось добавить вложение.");
+      setStatusError("Could not add the attachment.");
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleUploadFiles(files: FileList | File[]) {
+    if (!task || files.length === 0) {
+      return;
+    }
+
+    setSaving(true);
+    setStatusError("");
+    try {
+      const uploadedAttachments = await Promise.all(
+        Array.from(files).map((file) => uploadTaskAttachment(task.id, file)),
+      );
+      setTask({
+        ...task,
+        attachments: [...task.attachments, ...uploadedAttachments],
+        attachments_count: task.attachments_count + uploadedAttachments.length,
+      });
+    } catch {
+      setStatusError("Could not upload the file.");
+    } finally {
+      setSaving(false);
+      setDragActive(false);
+    }
+  }
+
+  function handleAttachmentDrag(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
+      setDragActive(true);
+    }
+    if (event.type === "dragleave") {
+      setDragActive(false);
+    }
+  }
+
+  async function handleAttachmentDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    await handleUploadFiles(event.dataTransfer.files);
   }
 
   async function handleDeleteAttachment(attachmentId: number) {
@@ -182,7 +264,7 @@ export default function TaskDetailsPage() {
         attachments_count: Math.max(0, task.attachments_count - 1),
       });
     } catch {
-      setStatusError("Не удалось удалить вложение.");
+      setStatusError("Could not delete the attachment.");
     } finally {
       setSaving(false);
     }
@@ -199,7 +281,33 @@ export default function TaskDetailsPage() {
       const relatedTasks = await setRelatedTasks(task.id, selectedRelated);
       setTask({ ...task, related_tasks: relatedTasks, related_tasks_count: relatedTasks.length });
     } catch {
-      setStatusError("Не удалось сохранить связанные задачи.");
+      setStatusError("Could not save related issues.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveSkills() {
+    if (!task) {
+      return;
+    }
+
+    setSaving(true);
+    setStatusError("");
+    try {
+      const payload = Object.entries(selectedSkillRewards)
+        .filter(([, reward]) => reward > 0)
+        .map(([skillId, reward]) => ({
+          skill_id: Number(skillId),
+          exp_reward: reward,
+        }));
+      const updatedSkills = await setTaskSkills(task.id, payload);
+      setTaskSkillsState(updatedSkills);
+      setSelectedSkillRewards(Object.fromEntries(
+        updatedSkills.map((item) => [item.skill.id, item.exp_reward]),
+      ));
+    } catch {
+      setStatusError("Could not save competencies.");
     } finally {
       setSaving(false);
     }
@@ -208,7 +316,7 @@ export default function TaskDetailsPage() {
   if (loading) {
     return (
       <main className="page-shell">
-        <section className="page-panel">Загрузка задачи...</section>
+        <section className="page-panel">Loading task...</section>
       </main>
     );
   }
@@ -217,7 +325,7 @@ export default function TaskDetailsPage() {
     return (
       <main className="page-shell">
         <section className="page-panel state-error">{error}</section>
-        <Link className="page-link" to="/tasks">Назад к задачам</Link>
+        <Link className="page-link" to="/tasks">Back to tasks</Link>
       </main>
     );
   }
@@ -251,15 +359,26 @@ export default function TaskDetailsPage() {
             </article>
             <article>
               <span>Deadline</span>
-              <strong>{task.deadline ?? "No deadline"}</strong>
+              <form className="deadline-editor" onSubmit={handleSaveDeadline}>
+                <input
+                  aria-label="Deadline"
+                  id="task-deadline"
+                  onChange={(event) => setDeadlineInput(event.target.value)}
+                  type="datetime-local"
+                  value={deadlineInput}
+                />
+                <button disabled={saving} type="submit">
+                  Save
+                </button>
+              </form>
             </article>
             <article>
               <span>Created</span>
-              <strong>{task.created_at}</strong>
+              <strong>{formatDateTime(task.created_at)}</strong>
             </article>
             <article>
               <span>Updated</span>
-              <strong>{task.updated_at}</strong>
+              <strong>{formatDateTime(task.updated_at)}</strong>
             </article>
             <article>
               <span>Approval</span>
@@ -267,12 +386,19 @@ export default function TaskDetailsPage() {
             </article>
           </section>
 
-          <section className="actions-row">
+          <section className="status-checklist">
             <button disabled={saving || task.status !== "review" || Boolean(task.approved_at)} onClick={handleApprove} type="button">
               Approve review
             </button>
             {statuses.map((status) => (
-              <button disabled={saving || !canChangeStatus(task, status)} key={status} onClick={() => handleStatusChange(status)} type="button">
+              <button
+                className={task.status === status ? "is-checked" : ""}
+                disabled={saving || !canChangeStatus(task, status)}
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                type="button"
+              >
+                <span>{task.status === status ? "✓" : ""}</span>
                 {statusLabels[status]}
               </button>
             ))}
@@ -282,8 +408,8 @@ export default function TaskDetailsPage() {
         <aside className="task-detail-side">
           <section className="page-panel detail-editor">
             <header className="section-header">
-              <p>Labels</p>
-              <h2>Task labels</h2>
+              <p>Classification</p>
+              <h2>Issue labels</h2>
             </header>
             {labels.length === 0 && <p>No labels</p>}
             <section className="checkbox-list">
@@ -312,6 +438,27 @@ export default function TaskDetailsPage() {
               <p>Attachments</p>
               <h2>Files and links</h2>
             </header>
+            <section
+              className={`attachment-dropzone ${dragActive ? "is-active" : ""}`}
+              onDragEnter={handleAttachmentDrag}
+              onDragLeave={handleAttachmentDrag}
+              onDragOver={handleAttachmentDrag}
+              onDrop={handleAttachmentDrop}
+            >
+              <strong>Drop files here</strong>
+              <span>or choose files from your computer</span>
+              <input
+                disabled={saving}
+                multiple
+                onChange={(event) => {
+                  if (event.target.files) {
+                    handleUploadFiles(event.target.files);
+                  }
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+            </section>
             {task.attachments.length === 0 && <p>No attachments</p>}
             <ul className="detail-list">
               {task.attachments.map((attachment) => (
@@ -330,6 +477,63 @@ export default function TaskDetailsPage() {
               <input onChange={(event) => setAttachmentUrl(event.target.value)} placeholder="https://example.com/file" required type="url" value={attachmentUrl} />
               <button disabled={saving} type="submit">Add attachment</button>
             </form>
+          </section>
+
+          <section className="page-panel detail-editor">
+            <header className="section-header">
+              <p>Competencies</p>
+              <h2>Skills XP</h2>
+            </header>
+            {skills.length === 0 && <p>No skills yet</p>}
+            {taskSkills.length > 0 && (
+              <ul className="skill-reward-summary">
+                {taskSkills.map((item) => (
+                  <li key={item.skill.id}>
+                    <span>{item.skill.name}</span>
+                    <strong>{item.exp_reward} XP</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <section className="skill-reward-list">
+              {skills.map((skill) => {
+                const selected = selectedSkillRewards[skill.id] !== undefined;
+
+                return (
+                  <label className={selected ? "is-selected" : ""} key={skill.id}>
+                    <input
+                      checked={selected}
+                      onChange={(event) => {
+                        setSelectedSkillRewards((current) => {
+                          if (!event.target.checked) {
+                            const next = { ...current };
+                            delete next[skill.id];
+                            return next;
+                          }
+                          return { ...current, [skill.id]: current[skill.id] ?? 50 };
+                        });
+                      }}
+                      type="checkbox"
+                    />
+                    <span>{skill.name}</span>
+                    <input
+                      disabled={!selected}
+                      min="1"
+                      max="1000"
+                      onChange={(event) => {
+                        setSelectedSkillRewards((current) => ({
+                          ...current,
+                          [skill.id]: Number(event.target.value),
+                        }));
+                      }}
+                      type="number"
+                      value={selectedSkillRewards[skill.id] ?? 50}
+                    />
+                  </label>
+                );
+              })}
+            </section>
+            <button disabled={saving} onClick={handleSaveSkills} type="button">Save competencies</button>
           </section>
 
           <section className="page-panel detail-editor">
@@ -362,7 +566,7 @@ export default function TaskDetailsPage() {
       </section>
 
       {statusError && <section className="page-panel state-error">{statusError}</section>}
-      <Link className="page-link" to="/tasks">Назад к задачам</Link>
+      <Link className="page-link" to="/tasks">Back to tasks</Link>
     </main>
   );
 }

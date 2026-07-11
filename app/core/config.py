@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
+    upload_dir: str = "uploads"
 
 
 @lru_cache

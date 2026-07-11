@@ -60,7 +60,7 @@ export default function TeamsPage() {
       selectTeam(nextTeam);
       setDrawerOpen(false);
     } catch {
-      setError("Не удалось загрузить команды.");
+      setError("Could not load teams.");
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function TeamsPage() {
   async function handleCreateTeam(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canManageProject) {
-      setError("Только project admin может менять команды.");
+      setError("Only a project admin can edit teams.");
       return;
     }
 
@@ -118,7 +118,7 @@ export default function TeamsPage() {
       selectTeam(updatedTeam);
       setDrawerOpen(false);
     } catch {
-      setError("Не удалось сохранить команду.");
+      setError("Could not save the team.");
     } finally {
       setSaving(false);
     }
@@ -146,16 +146,16 @@ export default function TeamsPage() {
       <section className="page-panel project-note">
         <strong>Project teams</strong>
         <p>
-          Команды собираются из участников текущего проекта. Один человек может быть только в одной команде проекта.
+          Teams are built from current project members. One person can belong to only one project team.
         </p>
       </section>
 
-      {loading && <section className="page-panel">Загрузка команд...</section>}
+      {loading && <section className="page-panel">Loading teams...</section>}
       {error && <section className="page-panel state-error">{error}</section>}
       {!loading && !error && (
         <section className="teams-page-layout">
           <section className="page-panel teams-list">
-            {teams.length === 0 && <p>Команды пока не созданы.</p>}
+            {teams.length === 0 && <p>No teams have been created yet.</p>}
             {teams.map((team) => (
               <button
                 className={`team-card ${team.id === selectedTeamId ? "is-selected" : ""}`}
@@ -228,7 +228,7 @@ export default function TeamsPage() {
 
                 {!canManageProject && (
                   <section className="permission-note">
-                    Только project admin может менять команды проекта.
+                    Only a project admin can edit project teams.
                   </section>
                 )}
 

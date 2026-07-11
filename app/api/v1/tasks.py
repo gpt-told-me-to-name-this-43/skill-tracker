@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Request, status
 
 from app.api.deps import CurrentUser, ExperienceServiceDep, TaskServiceDep
 from app.models.enums import TaskStatus
@@ -16,8 +16,45 @@ from app.schemas.task import (
     TaskStatusUpdate,
     TaskUpdate,
 )
+from app.services.exceptions import BadRequestError
 
 router = APIRouter()
+
+
+def _parse_multipart_file(content_type: str | None, body: bytes) -> tuple[str, bytes]:
+    if not content_type or "multipart/form-data" not in content_type:
+        raise BadRequestError("Expected multipart form data")
+
+    boundary_marker = "boundary="
+    if boundary_marker not in content_type:
+        raise BadRequestError("Multipart boundary is missing")
+
+    boundary = content_type.split(boundary_marker, 1)[1].split(";", 1)[0].strip().strip('"')
+    if not boundary:
+        raise BadRequestError("Multipart boundary is empty")
+
+    boundary_bytes = f"--{boundary}".encode()
+    for part in body.split(boundary_bytes):
+        if b'form-data; name="file"' not in part:
+            continue
+
+        header_end = part.find(b"\r\n\r\n")
+        if header_end == -1:
+            raise BadRequestError("Invalid multipart file payload")
+
+        headers = part[:header_end].decode("utf-8", errors="ignore")
+        filename = "attachment"
+        filename_marker = 'filename="'
+        if filename_marker in headers:
+            filename = headers.split(filename_marker, 1)[1].split('"', 1)[0] or filename
+
+        content = part[header_end + 4 :]
+        content = content.removesuffix(b"\r\n")
+        content = content.removesuffix(b"--")
+        content = content.removesuffix(b"\r\n")
+        return filename, content
+
+    raise BadRequestError("File field is missing")
 
 
 @router.get("/tasks", response_model=list[TaskListItem])
@@ -149,6 +186,29 @@ async def create_attachment(
     current_user: CurrentUser,
 ):
     return await service.create_attachment(task_id, data, current_user.id)
+
+
+@router.post(
+    "/tasks/{task_id}/attachments/upload",
+    response_model=TaskAttachmentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_attachment(
+    task_id: int,
+    service: TaskServiceDep,
+    current_user: CurrentUser,
+    request: Request,
+):
+    filename, content = _parse_multipart_file(
+        request.headers.get("content-type"),
+        await request.body(),
+    )
+    return await service.create_uploaded_attachment(
+        task_id,
+        filename,
+        content,
+        current_user.id,
+    )
 
 
 @router.delete(

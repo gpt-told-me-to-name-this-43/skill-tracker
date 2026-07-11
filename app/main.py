@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import auth, experience, skills, tasks, teams, users
 from app.core.config import settings
@@ -7,8 +10,11 @@ from app.core.errors import register_exception_handlers
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, debug=settings.debug)
+    upload_path = Path(settings.upload_dir)
+    upload_path.mkdir(parents=True, exist_ok=True)
 
     register_exception_handlers(app)
+    app.mount("/uploads", StaticFiles(directory=upload_path), name="uploads")
 
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:

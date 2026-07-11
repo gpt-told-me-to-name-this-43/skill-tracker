@@ -686,6 +686,23 @@
   overflow-wrap: anywhere;
 }
 
+.deadline-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.deadline-editor input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.deadline-editor button {
+  flex: 0 0 auto;
+}
+
 .detail-editor {
   display: grid;
   gap: 12px;
@@ -694,7 +711,9 @@
 .checkbox-list,
 .people-picker,
 .detail-list,
-.compact-form {
+.compact-form,
+.skill-reward-list,
+.skill-reward-summary {
   display: grid;
   gap: 10px;
 }
@@ -713,6 +732,110 @@
   width: 18px;
   height: 18px;
   margin-top: 3px;
+}
+
+.status-checklist {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.status-checklist button {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-surface);
+}
+
+.status-checklist button:hover,
+.status-checklist button.is-checked {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+}
+
+.status-checklist button span {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-primary);
+  font-weight: 900;
+  background: var(--color-surface);
+}
+
+.attachment-dropzone {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border: 1px dashed #9fadbc;
+  border-radius: var(--radius);
+  color: var(--color-muted);
+  text-align: center;
+  background: var(--color-subtle);
+}
+
+.attachment-dropzone.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+}
+
+.attachment-dropzone strong {
+  color: var(--color-text);
+}
+
+.attachment-dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.skill-reward-summary {
+  margin: 0;
+  list-style: none;
+}
+
+.skill-reward-summary li,
+.skill-reward-list label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.skill-reward-list label {
+  grid-template-columns: 18px minmax(0, 1fr) 92px;
+}
+
+.skill-reward-list label.is-selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.skill-reward-list input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.skill-reward-list input[type="number"] {
+  height: 36px;
 }
 
 .detail-list {
@@ -925,6 +1048,21 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.form-section,
+.member-competencies {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-subtle);
+}
+
+.task-form .section-header,
+.member-competencies .section-header {
+  margin-bottom: 0;
 }
 
 .details-list,
@@ -1377,6 +1515,10 @@
     grid-template-columns: 1fr;
   }
 
+  .status-checklist {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .people-list {
     max-height: none;
     overflow: visible;
@@ -1418,6 +1560,7 @@
   .teams-page-layout,
   .task-detail-layout,
   .detail-grid,
+  .status-checklist,
   .member-forms,
   .profile-hero,
   .profile-metrics,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { getUserSkills, type UserSkill } from "../../api/profileApi";
 import { getTeams, getUsers, updateWorkspaceProfile } from "../../api/usersApi";
 import { useAuth } from "../../context/useAuth";
 import type { MemberStatus, Person, Team } from "../../types/task";
@@ -30,6 +31,8 @@ export default function PeoplePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [position, setPosition] = useState("");
   const [memberStatus, setMemberStatus] = useState<MemberStatus>("active");
+  const [selectedSkills, setSelectedSkills] = useState<UserSkill[]>([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,7 +71,7 @@ export default function PeoplePage() {
           return nextSelected?.id ?? null;
         });
       } catch {
-        setError("Не удалось загрузить участников проекта.");
+        setError("Could not load project members.");
       } finally {
         setLoading(false);
       }
@@ -84,6 +87,26 @@ export default function PeoplePage() {
     setMemberStatus(person.member_status);
     setDrawerOpen(true);
   }
+
+  useEffect(() => {
+    async function loadSelectedSkills() {
+      if (!drawerOpen || !selectedUserId) {
+        setSelectedSkills([]);
+        return;
+      }
+
+      setSkillsLoading(true);
+      try {
+        setSelectedSkills(await getUserSkills(selectedUserId));
+      } catch {
+        setSelectedSkills([]);
+      } finally {
+        setSkillsLoading(false);
+      }
+    }
+
+    loadSelectedSkills();
+  }, [drawerOpen, selectedUserId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,7 +127,7 @@ export default function PeoplePage() {
       )));
       setDrawerOpen(false);
     } catch {
-      setError("Не удалось сохранить участника.");
+      setError("Could not save the member.");
     } finally {
       setSaving(false);
     }
@@ -120,7 +143,7 @@ export default function PeoplePage() {
       <section className="page-panel project-note">
         <strong>Project members</strong>
         <p>
-          Люди здесь считаются участниками текущего проекта. Добавлять в команды и менять профили может только project admin.
+          These people are members of the current project. Only a project admin can edit profiles and move members between teams.
         </p>
       </section>
 
@@ -141,10 +164,10 @@ export default function PeoplePage() {
         </select>
       </section>
 
-      {loading && <section className="page-panel">Загрузка участников...</section>}
+      {loading && <section className="page-panel">Loading members...</section>}
       {error && <section className="page-panel state-error">{error}</section>}
       {!loading && !error && people.length === 0 && (
-        <section className="page-panel">Участники не найдены.</section>
+        <section className="page-panel">No members found.</section>
       )}
       {!loading && !error && people.length > 0 && (
         <section className="people-page-layout">
@@ -205,9 +228,25 @@ export default function PeoplePage() {
                   </article>
                 </section>
 
+                <section className="member-competencies">
+                  <header className="section-header">
+                    <p>Competencies</p>
+                    <h2>Member skills</h2>
+                  </header>
+                  {skillsLoading && <p>Loading skills...</p>}
+                  {!skillsLoading && selectedSkills.length === 0 && <p>No competencies yet</p>}
+                  {!skillsLoading && selectedSkills.map((item) => (
+                    <article className="skill-row" key={item.skill.id}>
+                      <span>{item.skill.name}</span>
+                      <strong>Lvl {item.level}</strong>
+                      <small>{item.experience} XP</small>
+                    </article>
+                  ))}
+                </section>
+
             {!canManageProject && (
               <section className="permission-note">
-                Только project admin может менять участников проекта.
+                Only a project admin can edit project members.
               </section>
             )}
 

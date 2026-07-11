@@ -118,7 +118,7 @@ export default function TasksPage() {
         setUsers(usersData);
         setLabels(labelsData);
       } catch {
-        setError("Не удалось загрузить доску.");
+        setError("Could not load the board.");
       } finally {
         setLoading(false);
       }
@@ -166,7 +166,7 @@ export default function TasksPage() {
       )));
     } catch {
       setTasks(previousTasks);
-      setBoardError("Не удалось обновить статус задачи.");
+      setBoardError("Could not update the task status.");
     }
   }
 
@@ -207,13 +207,13 @@ export default function TasksPage() {
         </select>
       </section>
 
-      {loading && <section className="page-panel">Загрузка задач...</section>}
+      {loading && <section className="page-panel">Loading tasks...</section>}
       {error && <section className="page-panel state-error">{error}</section>}
       {!loading && !error && tasks.length === 0 && (
-        <section className="page-panel">Пока нет задач.</section>
+        <section className="page-panel">No tasks yet.</section>
       )}
       {!loading && !error && tasks.length > 0 && filteredTasks.length === 0 && (
-        <section className="page-panel">Задачи не найдены.</section>
+        <section className="page-panel">No tasks found.</section>
       )}
       {!loading && !error && tasks.length > 0 && (
         <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd} sensors={sensors}>
