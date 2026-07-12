@@ -499,6 +499,20 @@ function demoApiPlugin() {
           return
         }
 
+        const assignMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/assign$/)
+        if (assignMatch && method === 'PATCH') {
+          const body = await readBody(req)
+          const task = demoTasks.find((item) => item.id === Number(assignMatch[1]))
+          if (!task) {
+            sendJson(res, 404, { detail: 'Task not found' })
+            return
+          }
+          task.assignee_id = typeof body.assignee_id === 'number' ? body.assignee_id : null
+          task.updated_at = today
+          sendJson(res, 200, taskDto(task, true))
+          return
+        }
+
         const taskSkillsMatch = path.match(/^\/api\/v1\/tasks\/(\d+)\/skills$/)
         if (taskSkillsMatch && method === 'GET') {
           sendJson(res, 200, taskSkillDto(Number(taskSkillsMatch[1])))

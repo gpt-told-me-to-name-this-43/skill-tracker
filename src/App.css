@@ -118,8 +118,7 @@
 
 .sidebar-project p,
 .sidebar-project h2,
-.sidebar-project small,
-.sidebar-access p {
+.sidebar-project small {
   margin: 0;
 }
 
@@ -166,26 +165,6 @@
   white-space: nowrap;
 }
 
-.sidebar-access {
-  align-self: end;
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: #fff7ed;
-}
-
-.sidebar-access strong {
-  color: var(--color-warning);
-}
-
-.sidebar-access p {
-  color: #7c2d12;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .profile-link {
   align-self: end;
 }
@@ -202,7 +181,6 @@
 .sidebar-collapsed .navbar-logo strong,
 .sidebar-collapsed .sidebar-project h2,
 .sidebar-collapsed .sidebar-project small,
-.sidebar-collapsed .sidebar-access,
 .sidebar-collapsed .nav-label {
   position: absolute;
   width: 1px;
@@ -649,6 +627,34 @@
   gap: 16px;
 }
 
+.task-edit-form {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-subtle);
+}
+
+.task-edit-form > label,
+.task-edit-grid label {
+  display: grid;
+  gap: 6px;
+  color: #24364b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.task-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.task-edit-form button {
+  justify-self: start;
+}
+
 .task-detail-side {
   align-content: start;
 }
@@ -1051,6 +1057,7 @@
 }
 
 .form-section,
+.markdown-preview,
 .member-competencies {
   display: grid;
   gap: 12px;
@@ -1061,6 +1068,7 @@
 }
 
 .task-form .section-header,
+.markdown-preview .section-header,
 .member-competencies .section-header {
   margin-bottom: 0;
 }
@@ -1469,7 +1477,6 @@
   .sidebar-collapsed .navbar-logo strong,
   .sidebar-collapsed .sidebar-project h2,
   .sidebar-collapsed .sidebar-project small,
-  .sidebar-collapsed .sidebar-access,
   .sidebar-collapsed .nav-label {
     position: static;
     width: auto;
@@ -1501,7 +1508,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .sidebar-access,
   .profile-link {
     align-self: auto;
   }

@@ -50,11 +50,6 @@ export default function Navbar({ collapsed, onToggleCollapsed }: NavbarProps) {
         ))}
       </nav>
 
-      <section className="sidebar-access">
-        <strong>Project access</strong>
-        <p>{canManageProject ? "You can manage members and teams." : "Ask an admin to change members or teams."}</p>
-      </section>
-
       <NavLink className="navbar-link profile-link" title="Profile" to="/profile">
         <span className="nav-short">U</span>
         <span className="nav-label">Profile</span>

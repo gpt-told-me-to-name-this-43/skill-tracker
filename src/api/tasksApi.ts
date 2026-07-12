@@ -55,6 +55,10 @@ export function updateTaskStatus(taskId: number, status: TaskStatus): Promise<Ta
   return apiClient.patch<TaskDetail>(`/tasks/${taskId}/status`, { status });
 }
 
+export function assignTask(taskId: number, assigneeId: number | null): Promise<TaskDetail> {
+  return apiClient.patch<TaskDetail>(`/tasks/${taskId}/assign`, { assignee_id: assigneeId });
+}
+
 export function approveTask(taskId: number): Promise<TaskDetail | undefined> {
   return apiClient.patch<TaskDetail>(`/tasks/${taskId}/approve`);
 }

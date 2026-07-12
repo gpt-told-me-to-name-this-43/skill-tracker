@@ -3,7 +3,7 @@ import type { DragEvent, FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   approveTask,
-  createTaskAttachment,
+  assignTask,
   deleteTaskAttachment,
   getLabels,
   getSkills,
@@ -17,6 +17,8 @@ import {
   updateTaskStatus,
   uploadTaskAttachment,
 } from "../../api/tasksApi";
+import { getUsers, type User } from "../../api/usersApi";
+import MarkdownRenderer from "../../components/MarkdownRenderer/MarkdownRenderer";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
 import type { Label, Skill, TaskDetail, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
@@ -44,15 +46,18 @@ export default function TaskDetailsPage() {
   const { taskId } = useParams();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [allTasks, setAllTasks] = useState<TaskListItem[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [taskSkills, setTaskSkillsState] = useState<TaskSkill[]>([]);
   const [selectedLabels, setSelectedLabels] = useState<number[]>([]);
   const [selectedRelated, setSelectedRelated] = useState<number[]>([]);
   const [selectedSkillRewards, setSelectedSkillRewards] = useState<Record<number, number>>({});
+  const [titleInput, setTitleInput] = useState("");
+  const [descriptionInput, setDescriptionInput] = useState("");
+  const [difficultyInput, setDifficultyInput] = useState("3");
+  const [assigneeInput, setAssigneeInput] = useState("");
   const [deadlineInput, setDeadlineInput] = useState("");
-  const [attachmentName, setAttachmentName] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,10 +79,11 @@ export default function TaskDetailsPage() {
       }
 
       try {
-        const [taskData, labelsData, tasksData, skillsData, taskSkillsData] = await Promise.all([
+        const [taskData, labelsData, tasksData, usersData, skillsData, taskSkillsData] = await Promise.all([
           getTaskById(taskNumericId),
           getLabels(),
           getTasks(),
+          getUsers(),
           getSkills(),
           getTaskSkills(taskNumericId),
         ]);
@@ -90,6 +96,7 @@ export default function TaskDetailsPage() {
         setTask(taskData);
         setLabels(labelsData);
         setAllTasks(tasksData);
+        setUsers(usersData);
         setSkills(skillsData);
         setTaskSkillsState(taskSkillsData);
         setSelectedLabels(taskData.labels.map((label) => label.id));
@@ -97,6 +104,10 @@ export default function TaskDetailsPage() {
         setSelectedSkillRewards(Object.fromEntries(
           taskSkillsData.map((item) => [item.skill.id, item.exp_reward]),
         ));
+        setTitleInput(taskData.title);
+        setDescriptionInput(taskData.description ?? "");
+        setDifficultyInput(String(taskData.difficulty));
+        setAssigneeInput(taskData.assignee_id ? String(taskData.assignee_id) : "");
         setDeadlineInput(toDateTimeLocalInput(taskData.deadline));
       } catch {
         setError("Could not load the task.");
@@ -167,6 +178,38 @@ export default function TaskDetailsPage() {
     }
   }
 
+  async function handleSaveTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!task) {
+      return;
+    }
+
+    setSaving(true);
+    setStatusError("");
+    try {
+      let updatedTask = await updateTask(task.id, {
+        title: titleInput,
+        description: descriptionInput || null,
+        difficulty: Number(difficultyInput),
+      });
+
+      const nextAssigneeId = assigneeInput ? Number(assigneeInput) : null;
+      if (nextAssigneeId !== task.assignee_id) {
+        updatedTask = await assignTask(task.id, nextAssigneeId);
+      }
+
+      setTask(updatedTask);
+      setTitleInput(updatedTask.title);
+      setDescriptionInput(updatedTask.description ?? "");
+      setDifficultyInput(String(updatedTask.difficulty));
+      setAssigneeInput(updatedTask.assignee_id ? String(updatedTask.assignee_id) : "");
+    } catch {
+      setStatusError("Could not save task changes.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSaveLabels() {
     if (!task) {
       return;
@@ -179,29 +222,6 @@ export default function TaskDetailsPage() {
       setTask(updatedTask);
     } catch {
       setStatusError("Could not save labels.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleAddAttachment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!task) {
-      return;
-    }
-
-    setSaving(true);
-    setStatusError("");
-    try {
-      const attachment = await createTaskAttachment(task.id, {
-        name: attachmentName,
-        url: attachmentUrl,
-      });
-      setTask({ ...task, attachments: [...task.attachments, attachment], attachments_count: task.attachments_count + 1 });
-      setAttachmentName("");
-      setAttachmentUrl("");
-    } catch {
-      setStatusError("Could not add the attachment.");
     } finally {
       setSaving(false);
     }
@@ -342,7 +362,71 @@ export default function TaskDetailsPage() {
 
       <section className="task-detail-layout">
         <section className="page-panel task-detail-main">
-          <p>{task.description || "No description"}</p>
+          <MarkdownRenderer value={task.description} />
+
+          <form className="task-edit-form" onSubmit={handleSaveTask}>
+            <header className="section-header">
+              <p>Edit task</p>
+              <h2>Card details</h2>
+            </header>
+
+            <label htmlFor="task-title">Title</label>
+            <input
+              id="task-title"
+              onChange={(event) => setTitleInput(event.target.value)}
+              required
+              value={titleInput}
+            />
+
+            <label htmlFor="task-description">Description</label>
+            <textarea
+              id="task-description"
+              onChange={(event) => setDescriptionInput(event.target.value)}
+              placeholder="You can use Markdown here"
+              value={descriptionInput}
+            />
+
+            <section className="markdown-preview">
+              <header className="section-header">
+                <p>Markdown</p>
+                <h2>Preview</h2>
+              </header>
+              <MarkdownRenderer value={descriptionInput} />
+            </section>
+
+            <section className="task-edit-grid">
+              <label htmlFor="task-difficulty">
+                Difficulty
+                <select
+                  id="task-difficulty"
+                  onChange={(event) => setDifficultyInput(event.target.value)}
+                  value={difficultyInput}
+                >
+                  <option value="1">1 - Easy</option>
+                  <option value="2">2 - Normal</option>
+                  <option value="3">3 - Medium</option>
+                  <option value="4">4 - Hard</option>
+                  <option value="5">5 - Expert</option>
+                </select>
+              </label>
+
+              <label htmlFor="task-assignee">
+                Assignee
+                <select
+                  id="task-assignee"
+                  onChange={(event) => setAssigneeInput(event.target.value)}
+                  value={assigneeInput}
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </select>
+              </label>
+            </section>
+
+            <button disabled={saving} type="submit">Save changes</button>
+          </form>
 
           <section className="detail-grid">
             <article>
@@ -436,7 +520,7 @@ export default function TaskDetailsPage() {
           <section className="page-panel detail-editor">
             <header className="section-header">
               <p>Attachments</p>
-              <h2>Files and links</h2>
+              <h2>Files</h2>
             </header>
             <section
               className={`attachment-dropzone ${dragActive ? "is-active" : ""}`}
@@ -472,11 +556,6 @@ export default function TaskDetailsPage() {
                 </li>
               ))}
             </ul>
-            <form className="compact-form" onSubmit={handleAddAttachment}>
-              <input onChange={(event) => setAttachmentName(event.target.value)} placeholder="Attachment name" required value={attachmentName} />
-              <input onChange={(event) => setAttachmentUrl(event.target.value)} placeholder="https://example.com/file" required type="url" value={attachmentUrl} />
-              <button disabled={saving} type="submit">Add attachment</button>
-            </form>
           </section>
 
           <section className="page-panel detail-editor">
