@@ -20,6 +20,8 @@ def _error_body(message: str, details: object = None) -> dict:
 def _json_safe(value: object) -> object:
     if isinstance(value, BaseException):
         return str(value)
+    if isinstance(value, bytes | bytearray):
+        return value.decode("utf-8", errors="replace")
     if isinstance(value, dict):
         return {key: _json_safe(item) for key, item in value.items()}
     if isinstance(value, list):

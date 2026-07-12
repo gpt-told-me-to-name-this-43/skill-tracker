@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, Query
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -95,7 +95,9 @@ async def get_pagination(
 
 PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+# Логин отдаёт JWT через JSON POST /api/v1/auth/login; в Swagger Authorize
+# вставляется готовый токен, поэтому схема — Bearer, а не OAuth2 password flow.
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_auth_service(db: DbSession) -> AuthService:
@@ -106,13 +108,13 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 async def get_current_user(
-    token: Annotated[str | None, Depends(oauth2_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     auth_service: AuthServiceDep,
 ) -> User:
-    if token is None:
+    if credentials is None:
         raise UnauthorizedError("Not authenticated")
 
-    return await auth_service.get_user_from_token(token)
+    return await auth_service.get_user_from_token(credentials.credentials)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

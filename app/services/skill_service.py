@@ -49,10 +49,22 @@ class SkillService:
 
     async def update(self, skill_id: int, data: SkillUpdate) -> Skill:
         skill = await self.get(skill_id)
-        if data.name is not None:
-            skill.name = data.name
-        if data.description is not None:
-            skill.description = data.description
+        updates = data.model_dump(exclude_unset=True)
+
+        if updates.get("name") is not None:
+            name = updates["name"].strip()
+            if not name:
+                raise ConflictError("Skill name cannot be empty")
+
+            existing = await self.repo.get_by_name(name)
+            if existing is not None and existing.id != skill.id:
+                raise ConflictError(f"Skill '{name}' already exists")
+
+            skill.name = name
+
+        if "description" in updates:
+            skill.description = updates["description"]
+
         await self.repo.session.flush()
         return skill
 
