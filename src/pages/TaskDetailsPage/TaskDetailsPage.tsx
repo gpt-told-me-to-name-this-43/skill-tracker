@@ -584,6 +584,23 @@ export default function TaskDetailsPage() {
             <button disabled={saving} onClick={handleSaveLabels} type="button">Save labels</button>
           </section>
 
+          {lintReport && lintReport.warnings.length > 0 && (
+            <section className="move-warning">
+              <strong>Quality warnings ({lintReport.warnings.length})</strong>
+              <ul className="lint-warning-list">
+                {lintReport.warnings.map((warning) => (
+                  <li key={warning.code}>
+                    <span className={`lint-severity lint-severity-${warning.severity}`}>
+                      {warning.severity}
+                    </span>
+                    {warning.message}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {lintError && <p className="lint-unavailable">{lintError}</p>}
+
           <section className="page-panel detail-editor">
             <header className="section-header">
               <p>Attachments</p>
@@ -711,22 +728,6 @@ export default function TaskDetailsPage() {
         </aside>
       </section>
 
-      {lintReport && lintReport.warnings.length > 0 && (
-        <section className="move-warning">
-          <strong>Quality warnings ({lintReport.warnings.length})</strong>
-          <ul className="lint-warning-list">
-            {lintReport.warnings.map((warning) => (
-              <li key={warning.code}>
-                <span className={`lint-severity lint-severity-${warning.severity}`}>
-                  {warning.severity}
-                </span>
-                {warning.message}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {lintError && <p className="lint-unavailable">{lintError}</p>}
       {statusError && <section className="page-panel state-error">{statusError}</section>}
       <Link className="page-link" to="/tasks">Back to tasks</Link>
     </main>
