@@ -403,8 +403,8 @@
 }
 
 .kanban-board {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(260px, 1fr));
+  display: flex;
+  align-items: stretch;
   gap: 16px;
   margin-bottom: 24px;
   overflow-x: auto;
@@ -412,11 +412,46 @@
 }
 
 .kanban-column {
-  min-width: 260px;
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 220px;
   min-height: 460px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-subtle);
+}
+
+/* Колонка с шириной, заданной пользователем, перестаёт растягиваться. */
+.kanban-column.is-resized {
+  flex: 0 0 auto;
+  width: var(--kanban-column-width, 300px);
+}
+
+.kanban-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -10px;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.kanban-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.kanban-resize-handle:hover::after,
+.kanban-resize-handle.is-resizing::after {
+  background: var(--color-primary);
 }
 
 .kanban-column.is-over {
@@ -673,6 +708,28 @@
   background: var(--color-subtle);
 }
 
+.task-description {
+  display: grid;
+  gap: 8px;
+}
+
+.task-description-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.task-description-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.task-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .task-edit-form > label,
 .task-edit-grid label {
   display: grid;
@@ -704,6 +761,11 @@
 
 .detail-grid.compact {
   grid-template-columns: 1fr;
+}
+
+/* Одинокий последний блок (нечётное число карточек) занимает весь ряд. */
+.detail-grid article:nth-child(odd):last-child {
+  grid-column: 1 / -1;
 }
 
 .detail-grid article {
@@ -779,7 +841,7 @@
 
 .status-checklist {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin: 20px 0;
 }
@@ -1170,6 +1232,38 @@
 
 .state-error {
   color: var(--color-danger);
+}
+
+.lint-warning-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lint-warning-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.lint-severity {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+.lint-severity-warning {
+  color: var(--color-warning);
+  border-color: #f4b36a;
+}
+
+.lint-unavailable {
+  color: var(--color-muted);
 }
 
 .profile-hero {
@@ -1628,8 +1722,21 @@
     width: max-content;
   }
 
+  .kanban-board {
+    flex-direction: column;
+  }
+
   .kanban-column {
     min-width: 0;
+  }
+
+  .kanban-column.is-resized {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .kanban-resize-handle {
+    display: none;
   }
 
   .people-list {

@@ -54,6 +54,12 @@ class TaskRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_task_with_labels(self, task_id: int) -> Task | None:
+        result = await self.session.execute(
+            select(Task).options(selectinload(Task.labels)).where(Task.id == task_id)
+        )
+        return result.scalar_one_or_none()
+
     async def get_task_by_github_issue_number(self, issue_number: int) -> Task | None:
         result = await self.session.execute(
             select(Task)

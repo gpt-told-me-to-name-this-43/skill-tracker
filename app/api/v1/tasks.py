@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, Request, status
 
-from app.api.deps import CurrentUser, ExperienceServiceDep, TaskServiceDep
+from app.api.deps import CurrentUser, ExperienceServiceDep, TaskLintServiceDep, TaskServiceDep
 from app.models.enums import TaskStatus
 from app.schemas.experience import TaskSkillRead, TaskSkillsSet
 from app.schemas.label import LabelCreate, LabelRead, TaskLabelsSet
@@ -11,6 +11,7 @@ from app.schemas.task import (
     TaskAttachmentRead,
     TaskCreate,
     TaskDetail,
+    TaskLintReport,
     TaskListItem,
     TaskRelatedSet,
     TaskStatusUpdate,
@@ -93,6 +94,15 @@ async def get_task(
 ):
     """Получить задачу по ID."""
     return await service.get_task_by_id(task_id)
+
+
+@router.get("/tasks/{task_id}/lint", response_model=TaskLintReport)
+async def lint_task(
+    task_id: int,
+    service: TaskLintServiceDep,
+):
+    """Проверить качество задачи и вернуть список предупреждений."""
+    return await service.lint_task(task_id)
 
 
 @router.get("/tasks/{task_id}/skills", response_model=list[TaskSkillRead])

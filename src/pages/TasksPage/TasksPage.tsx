@@ -3,12 +3,13 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
+import type { CollisionDetection, DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -16,7 +17,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Link } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { GITHUB_SYNC_COMPLETED_EVENT } from "../../api/integrationsApi";
 import { getLabels, getTasks, updateTaskStatus } from "../../api/tasksApi";
 import { getUsers } from "../../api/usersApi";
@@ -25,6 +27,37 @@ import { statusLabels } from "../../constants/taskStatus";
 import type { Label, Person, TaskListItem, TaskStatus } from "../../types/task";
 
 const kanbanStatuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
+
+const COLUMN_WIDTHS_STORAGE_KEY = "kanban-column-widths";
+const COLUMN_MIN_WIDTH = 220;
+const COLUMN_MAX_WIDTH = 640;
+
+type ColumnWidths = Partial<Record<TaskStatus, number>>;
+
+function loadStoredColumnWidths(): ColumnWidths {
+  try {
+    const raw = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+
+    const widths: ColumnWidths = {};
+    for (const status of kanbanStatuses) {
+      const value = (parsed as Record<string, unknown>)[status];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        widths[status] = Math.min(COLUMN_MAX_WIDTH, Math.max(COLUMN_MIN_WIDTH, value));
+      }
+    }
+    return widths;
+  } catch {
+    return {};
+  }
+}
 
 function SortableTaskCard({ task }: { task: TaskListItem }) {
   const {
@@ -52,17 +85,65 @@ function SortableTaskCard({ task }: { task: TaskListItem }) {
 function KanbanColumn({
   status,
   tasks,
+  width,
+  onResize,
+  onResetWidth,
 }: {
   status: TaskStatus;
   tasks: TaskListItem[];
+  width: number | undefined;
+  onResize: (status: TaskStatus, width: number) => void;
+  onResetWidth: (status: TaskStatus) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
     data: { type: "column", status },
   });
+  const columnRef = useRef<HTMLElement | null>(null);
+  const [resizing, setResizing] = useState(false);
+
+  function handleResizeStart(event: ReactPointerEvent<HTMLSpanElement>) {
+    const column = columnRef.current;
+    if (!column) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResizing(true);
+
+    const startX = event.clientX;
+    const startWidth = column.offsetWidth;
+
+    function handleMove(moveEvent: globalThis.PointerEvent) {
+      const nextWidth = Math.min(
+        COLUMN_MAX_WIDTH,
+        Math.max(COLUMN_MIN_WIDTH, startWidth + moveEvent.clientX - startX),
+      );
+      onResize(status, nextWidth);
+    }
+
+    function handleUp() {
+      setResizing(false);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+  }
 
   return (
-    <article className={`kanban-column ${isOver ? "is-over" : ""}`} ref={setNodeRef}>
+    <article
+      className={`kanban-column ${isOver ? "is-over" : ""} ${width !== undefined ? "is-resized" : ""}`}
+      ref={(node) => {
+        setNodeRef(node);
+        columnRef.current = node;
+      }}
+      style={width !== undefined ? { "--kanban-column-width": `${width}px` } as CSSProperties : undefined}
+    >
       <header className="kanban-column-header">
         <h2>{statusLabels[status]}</h2>
         <span>{tasks.length}</span>
@@ -76,9 +157,26 @@ function KanbanColumn({
           ))}
         </section>
       </SortableContext>
+
+      <span
+        aria-hidden="true"
+        className={`kanban-resize-handle ${resizing ? "is-resizing" : ""}`}
+        onDoubleClick={() => onResetWidth(status)}
+        onPointerDown={handleResizeStart}
+        title="Drag to resize, double-click to reset"
+      />
     </article>
   );
 }
+
+// closestCorners сам по себе на канбане резолвит дроп в соседнюю карточку
+// исходной колонки (у высоких колонок углы всегда «дальше», чем у карточек),
+// поэтому сперва берём то, что реально под курсором, а closestCorners
+// оставляем только как фолбэк для клавиатурного перетаскивания.
+const detectKanbanCollision: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0 ? pointerCollisions : closestCorners(args);
+};
 
 function getTaskStatusFromDrop(event: DragEndEvent, tasks: TaskListItem[]) {
   const overId = event.over?.id ? String(event.over.id) : "";
@@ -99,6 +197,27 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [boardError, setBoardError] = useState("");
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(loadStoredColumnWidths);
+
+  const handleColumnResize = useCallback((status: TaskStatus, width: number) => {
+    setColumnWidths((current) => ({ ...current, [status]: width }));
+  }, []);
+
+  const handleColumnResetWidth = useCallback((status: TaskStatus) => {
+    setColumnWidths((current) => {
+      const next = { ...current };
+      delete next[status];
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch {
+      // Приватный режим или заполненное хранилище — ширина просто не сохранится.
+    }
+  }, [columnWidths]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -227,13 +346,16 @@ export default function TasksPage() {
         <section className="page-panel">No tasks found.</section>
       )}
       {!loading && !error && tasks.length > 0 && (
-        <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd} sensors={sensors}>
+        <DndContext collisionDetection={detectKanbanCollision} onDragEnd={handleDragEnd} sensors={sensors}>
           <section className="kanban-board" aria-label="Project kanban board">
             {kanbanStatuses.map((status) => (
               <KanbanColumn
                 key={status}
+                onResetWidth={handleColumnResetWidth}
+                onResize={handleColumnResize}
                 status={status}
                 tasks={filteredTasks.filter((task) => task.status === status)}
+                width={columnWidths[status]}
               />
             ))}
           </section>

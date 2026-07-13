@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.core.config import settings
+from app.core.time_utils import to_naive_utc
 from app.models.enums import TaskStatus
 from app.models.task import Label, Task, TaskAttachment
 from app.repositories.task_repo import TaskRepository
@@ -140,7 +141,7 @@ class TaskService:
             deadline = deadline.replace(tzinfo=UTC)
         if deadline <= datetime.now(UTC):
             raise BadRequestError("Deadline must be in the future")
-        return deadline.replace(tzinfo=None)
+        return to_naive_utc(deadline)
 
     async def _ensure_user_exists(self, user_id: int | None) -> None:
         """Проверяет существование пользователя."""

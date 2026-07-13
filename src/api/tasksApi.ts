@@ -4,6 +4,7 @@ import type {
   Skill,
   TaskAttachment,
   TaskDetail,
+  TaskLintReport,
   TaskListItem,
   TaskSkill,
   TaskStatus,
@@ -98,6 +99,10 @@ export function deleteTaskAttachment(taskId: number, attachmentId: number): Prom
 
 export function setRelatedTasks(taskId: number, taskIds: number[]): Promise<RelatedTask[]> {
   return apiClient.put<RelatedTask[]>(`/tasks/${taskId}/related`, { task_ids: taskIds });
+}
+
+export function getTaskLint(taskId: number): Promise<TaskLintReport> {
+  return apiClient.get<TaskLintReport>(`/tasks/${taskId}/lint`);
 }
 
 export function getTaskSkills(taskId: number): Promise<TaskSkill[]> {

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, TypeAdapter, field_validator
 
@@ -128,6 +129,21 @@ class TaskDetail(TaskListItem):
     assignee_id: int | None
     approved_by_id: int | None
     approved_at: datetime | None
+
+
+LintSeverity = Literal["info", "warning"]
+
+
+class TaskLintWarningRead(BaseModel):
+    code: str
+    field: str | None
+    severity: LintSeverity
+    message: str
+
+
+class TaskLintReport(BaseModel):
+    task_id: int
+    warnings: list[TaskLintWarningRead]
 
 
 TaskRead = TaskDetail

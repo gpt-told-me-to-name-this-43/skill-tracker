@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -8,6 +8,7 @@ import {
   getLabels,
   getSkills,
   getTaskById,
+  getTaskLint,
   getTaskSkills,
   getTasks,
   setRelatedTasks,
@@ -22,7 +23,7 @@ import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
 import MarkdownRenderer from "../../components/MarkdownRenderer/MarkdownRenderer";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
-import type { Label, Skill, TaskDetail, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
+import type { Label, Skill, TaskDetail, TaskLintReport, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
 import { formatDateTime, toApiDateTime, toDateTimeLocalInput } from "../../utils/dateTime";
 
 const statuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
@@ -64,6 +65,28 @@ export default function TaskDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [statusError, setStatusError] = useState("");
+  const [editingTask, setEditingTask] = useState(false);
+  const [lintReport, setLintReport] = useState<TaskLintReport | null>(null);
+  const [lintError, setLintError] = useState("");
+  const lintRequestRef = useRef(0);
+
+  const refreshLint = useCallback(async (id: number) => {
+    const requestId = ++lintRequestRef.current;
+    try {
+      const report = await getTaskLint(id);
+      if (requestId !== lintRequestRef.current) {
+        return;
+      }
+      setLintReport(report);
+      setLintError("");
+    } catch {
+      if (requestId !== lintRequestRef.current) {
+        return;
+      }
+      setLintReport(null);
+      setLintError("Quality check is unavailable.");
+    }
+  }, []);
 
   const taskNumericId = Number(taskId);
   const relatedOptions = useMemo(
@@ -78,6 +101,9 @@ export default function TaskDetailsPage() {
         setLoading(false);
         return;
       }
+
+      setLintReport(null);
+      setLintError("");
 
       try {
         const [taskData, labelsData, tasksData, usersData, skillsData, taskSkillsData] = await Promise.all([
@@ -119,6 +145,14 @@ export default function TaskDetailsPage() {
 
     loadTask();
   }, [taskNumericId]);
+
+  // Единая точка обновления lint-отчёта: срабатывает на загрузке и после
+  // любого мутационного хендлера, который заканчивается setTask.
+  useEffect(() => {
+    if (task) {
+      void refreshLint(task.id);
+    }
+  }, [task, refreshLint]);
 
   async function handleStatusChange(status: TaskStatus) {
     if (!task) {
@@ -204,11 +238,36 @@ export default function TaskDetailsPage() {
       setDescriptionInput(updatedTask.description ?? "");
       setDifficultyInput(String(updatedTask.difficulty));
       setAssigneeInput(updatedTask.assignee_id ? String(updatedTask.assignee_id) : "");
+      setEditingTask(false);
     } catch {
       setStatusError("Could not save task changes.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleStartEditing() {
+    if (!task) {
+      return;
+    }
+
+    setTitleInput(task.title);
+    setDescriptionInput(task.description ?? "");
+    setDifficultyInput(String(task.difficulty));
+    setAssigneeInput(task.assignee_id ? String(task.assignee_id) : "");
+    setEditingTask(true);
+  }
+
+  function handleCancelEditing() {
+    if (!task) {
+      return;
+    }
+
+    setTitleInput(task.title);
+    setDescriptionInput(task.description ?? "");
+    setDifficultyInput(String(task.difficulty));
+    setAssigneeInput(task.assignee_id ? String(task.assignee_id) : "");
+    setEditingTask(false);
   }
 
   async function handleSaveLabels() {
@@ -327,6 +386,8 @@ export default function TaskDetailsPage() {
       setSelectedSkillRewards(Object.fromEntries(
         updatedSkills.map((item) => [item.skill.id, item.exp_reward]),
       ));
+      // Skills-сохранение не обновляет task, поэтому эффект по task не сработает.
+      void refreshLint(task.id);
     } catch {
       setStatusError("Could not save competencies.");
     } finally {
@@ -363,8 +424,17 @@ export default function TaskDetailsPage() {
 
       <section className="task-detail-layout">
         <section className="page-panel task-detail-main">
-          <MarkdownRenderer value={task.description} />
+          {!editingTask && (
+            <section className="task-description">
+              <header className="task-description-header">
+                <h2>Description</h2>
+                <button onClick={handleStartEditing} type="button">Edit</button>
+              </header>
+              <MarkdownRenderer emptyText="No description yet." value={task.description} />
+            </section>
+          )}
 
+          {editingTask && (
           <form className="task-edit-form" onSubmit={handleSaveTask}>
             <header className="section-header">
               <p>Edit task</p>
@@ -418,8 +488,12 @@ export default function TaskDetailsPage() {
               </label>
             </section>
 
-            <button disabled={saving} type="submit">Save changes</button>
+            <section className="task-edit-actions">
+              <button disabled={saving} type="submit">Save changes</button>
+              <button disabled={saving} onClick={handleCancelEditing} type="button">Cancel</button>
+            </section>
           </form>
+          )}
 
           <section className="detail-grid">
             <article>
@@ -637,6 +711,22 @@ export default function TaskDetailsPage() {
         </aside>
       </section>
 
+      {lintReport && lintReport.warnings.length > 0 && (
+        <section className="move-warning">
+          <strong>Quality warnings ({lintReport.warnings.length})</strong>
+          <ul className="lint-warning-list">
+            {lintReport.warnings.map((warning) => (
+              <li key={warning.code}>
+                <span className={`lint-severity lint-severity-${warning.severity}`}>
+                  {warning.severity}
+                </span>
+                {warning.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {lintError && <p className="lint-unavailable">{lintError}</p>}
       {statusError && <section className="page-panel state-error">{statusError}</section>}
       <Link className="page-link" to="/tasks">Back to tasks</Link>
     </main>

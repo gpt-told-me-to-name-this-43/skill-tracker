@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
-from app.models import Base, Label, Task, User
+from app.models import Base, Label, Skill, Task, TaskLabel, TaskSkill, User
 from app.models.enums import MemberStatus
 from app.repositories.task_repo import TaskRepository
 from app.repositories.user_repo import UserRepository
@@ -103,3 +104,21 @@ async def seed_task_fixtures(session: AsyncSession) -> TaskFixtures:
         backend_label=backend_label,
         frontend_label=frontend_label,
     )
+
+
+async def make_task_clean(session: AsyncSession, fixtures: TaskFixtures) -> None:
+    """Дополняет seed-задачу до состояния без единого lint-предупреждения."""
+    skill = Skill(name="Python")
+    session.add(skill)
+    await session.flush()
+    session.add_all(
+        [
+            TaskSkill(task_id=fixtures.task.id, skill_id=skill.id, exp_reward=50),
+            TaskLabel(task_id=fixtures.task.id, label_id=fixtures.backend_label.id),
+        ]
+    )
+    task = await session.get(Task, fixtures.task.id)
+    task.description = "A long enough description of the kanban work."
+    task.deadline = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7)
+    await session.flush()
+    session.expunge_all()

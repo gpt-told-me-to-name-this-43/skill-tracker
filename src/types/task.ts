@@ -93,3 +93,15 @@ export type TaskDetail = TaskListItem & {
 };
 
 export type Task = TaskDetail;
+
+export type TaskLintWarning = {
+  code: string;
+  field: string | null;
+  severity: "info" | "warning";
+  message: string;
+};
+
+export type TaskLintReport = {
+  task_id: number;
+  warnings: TaskLintWarning[];
+};

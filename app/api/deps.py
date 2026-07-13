@@ -18,6 +18,7 @@ from app.services.exceptions import UnauthorizedError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
 from app.services.github_import_service import GitHubImportService
 from app.services.skill_service import SkillService
+from app.services.task_lint_service import TaskLintService
 from app.services.task_service import TaskService
 from app.services.team_service import TeamService
 from app.services.user_service import UserService
@@ -51,6 +52,16 @@ async def get_task_service(db: DbSession) -> TaskService:
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+
+async def get_task_lint_service(db: DbSession) -> TaskLintService:
+    return TaskLintService(
+        task_repo=TaskRepository(db),
+        experience_repo=ExperienceRepository(db),
+    )
+
+
+TaskLintServiceDep = Annotated[TaskLintService, Depends(get_task_lint_service)]
 
 
 async def get_experience_service(db: DbSession) -> ExperienceService:
