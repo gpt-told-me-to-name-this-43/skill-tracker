@@ -16,7 +16,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { GITHUB_SYNC_COMPLETED_EVENT } from "../../api/integrationsApi";
 import { getLabels, getTasks, updateTaskStatus } from "../../api/tasksApi";
 import { getUsers } from "../../api/usersApi";
 import TaskCard from "../../components/TaskCard/TaskCard";
@@ -105,27 +106,37 @@ export default function TasksPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  useEffect(() => {
-    async function loadBoard() {
-      try {
-        const [tasksData, usersData, labelsData] = await Promise.all([
-          getTasks(),
-          getUsers(),
-          getLabels(),
-        ]);
+  const loadBoard = useCallback(async () => {
+    try {
+      const [tasksData, usersData, labelsData] = await Promise.all([
+        getTasks(),
+        getUsers(),
+        getLabels(),
+      ]);
 
-        setTasks(tasksData);
-        setUsers(usersData);
-        setLabels(labelsData);
-      } catch {
-        setError("Could not load the board.");
-      } finally {
-        setLoading(false);
-      }
+      setTasks(tasksData);
+      setUsers(usersData);
+      setLabels(labelsData);
+      setError("");
+    } catch {
+      setError("Could not load the board.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBoard();
+  }, [loadBoard]);
+
+  useEffect(() => {
+    function handleGithubSyncCompleted() {
+      loadBoard();
     }
 
-    loadBoard();
-  }, []);
+    window.addEventListener(GITHUB_SYNC_COMPLETED_EVENT, handleGithubSyncCompleted);
+    return () => window.removeEventListener(GITHUB_SYNC_COMPLETED_EVENT, handleGithubSyncCompleted);
+  }, [loadBoard]);
 
   const difficulties = useMemo(
     () => [...new Set(tasks.map((task) => task.difficulty))].sort((first, second) => first - second),

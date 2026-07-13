@@ -23,6 +23,8 @@ def _serialize_user(user) -> dict | None:
         "avatar_url": user.avatar_url,
         "position": user.position,
         "member_status": user.member_status,
+        "github_login": user.github_login,
+        "is_placeholder": user.is_placeholder,
     }
 
 
@@ -97,6 +99,12 @@ class TaskService:
             "labels": labels,
             "attachments_count": len(task.attachments),
             "related_tasks_count": related_count,
+            "github_issue_number": task.github_issue_number,
+            "github_url": (
+                f"https://github.com/{settings.github_repo}/issues/{task.github_issue_number}"
+                if task.github_issue_number is not None
+                else None
+            ),
             "created_at": task.created_at,
             "updated_at": task.updated_at,
         }
@@ -291,8 +299,7 @@ class TaskService:
 
         original_name = Path(filename).name or "attachment"
         safe_name = "".join(
-            char if char.isalnum() or char in {".", "-", "_"} else "-"
-            for char in original_name
+            char if char.isalnum() or char in {".", "-", "_"} else "-" for char in original_name
         ).strip(".-")
         if not safe_name:
             safe_name = "attachment"

@@ -4,7 +4,9 @@ from fastapi import Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.integrations.github_client import GitHubClient, GitHubIssueSource
 from app.models.user import User
 from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
@@ -14,6 +16,7 @@ from app.repositories.user_repo import UserRepository
 from app.services.auth_service import AuthService
 from app.services.exceptions import UnauthorizedError
 from app.services.experience import DefaultExperienceAwarder, ExperienceService
+from app.services.github_import_service import GitHubImportService
 from app.services.skill_service import SkillService
 from app.services.task_service import TaskService
 from app.services.team_service import TeamService
@@ -51,15 +54,42 @@ TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 
 
 async def get_experience_service(db: DbSession) -> ExperienceService:
+    experience_repo = ExperienceRepository(db)
     return ExperienceService(
-        experience_repo=ExperienceRepository(db),
+        experience_repo=experience_repo,
         task_repo=TaskRepository(db),
         skill_repo=SkillRepository(db),
         user_repo=UserRepository(db),
+        experience_awarder=DefaultExperienceAwarder(experience_repo),
     )
 
 
 ExperienceServiceDep = Annotated[ExperienceService, Depends(get_experience_service)]
+
+
+async def get_github_issue_source() -> GitHubIssueSource:
+    return GitHubClient(
+        repo=settings.github_repo,
+        api_url=settings.github_api_url,
+        token=settings.github_token,
+    )
+
+
+GitHubIssueSourceDep = Annotated[GitHubIssueSource, Depends(get_github_issue_source)]
+
+
+async def get_github_import_service(
+    db: DbSession,
+    source: GitHubIssueSourceDep,
+) -> GitHubImportService:
+    return GitHubImportService(
+        source=source,
+        task_repo=TaskRepository(db),
+        user_repo=UserRepository(db),
+    )
+
+
+GitHubImportServiceDep = Annotated[GitHubImportService, Depends(get_github_import_service)]
 
 
 async def get_user_service(db: DbSession) -> UserService:

@@ -18,6 +18,7 @@ import {
   uploadTaskAttachment,
 } from "../../api/tasksApi";
 import { getUsers, type User } from "../../api/usersApi";
+import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
 import MarkdownRenderer from "../../components/MarkdownRenderer/MarkdownRenderer";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
 import { statusLabels } from "../../constants/taskStatus";
@@ -379,20 +380,12 @@ export default function TaskDetailsPage() {
             />
 
             <label htmlFor="task-description">Description</label>
-            <textarea
+            <MarkdownEditor
               id="task-description"
-              onChange={(event) => setDescriptionInput(event.target.value)}
+              onChange={setDescriptionInput}
               placeholder="You can use Markdown here"
               value={descriptionInput}
             />
-
-            <section className="markdown-preview">
-              <header className="section-header">
-                <p>Markdown</p>
-                <h2>Preview</h2>
-              </header>
-              <MarkdownRenderer value={descriptionInput} />
-            </section>
 
             <section className="task-edit-grid">
               <label htmlFor="task-difficulty">

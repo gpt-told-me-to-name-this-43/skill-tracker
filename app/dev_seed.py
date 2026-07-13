@@ -18,10 +18,12 @@ class DevUser:
 
 
 DEV_USERS = (
+    # Админ, чтобы демо показывало весь функционал (редактирование участников и т.д.).
     DevUser(
         email="test@example.com",
         username="test",
         password="password123",
+        role="admin",
     ),
 )
 

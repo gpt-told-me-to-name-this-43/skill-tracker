@@ -29,6 +29,14 @@ class UserSummary(BaseModel):
     avatar_url: str | None
     position: str | None
     member_status: MemberStatus
+    github_login: str | None = None
+    is_placeholder: bool = False
+
+    @field_validator("is_placeholder", mode="before")
+    @classmethod
+    def default_placeholder(cls, value: bool | None) -> bool:
+        # У не-flushed ORM-инстансов default колонки ещё не применён.
+        return bool(value) if value is not None else False
 
 
 class UserRead(UserSummary):

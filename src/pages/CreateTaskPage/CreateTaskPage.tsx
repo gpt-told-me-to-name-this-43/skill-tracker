@@ -12,7 +12,7 @@ import {
   uploadTaskAttachment,
 } from "../../api/tasksApi";
 import { getUsers, type User } from "../../api/usersApi";
-import MarkdownRenderer from "../../components/MarkdownRenderer/MarkdownRenderer";
+import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
 import type { Label, Skill, TaskListItem } from "../../types/task";
 import { toApiDateTime } from "../../utils/dateTime";
 
@@ -146,21 +146,14 @@ export default function CreateTaskPage() {
         <input id="title" name="title" onChange={(event) => setTitle(event.target.value)} placeholder="Create Login Page" required value={title} />
 
         <label htmlFor="description">Description</label>
-        <textarea
+        <MarkdownEditor
           id="description"
           name="description"
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={setDescription}
           placeholder="You can use Markdown here"
           required
           value={description}
         />
-        <section className="markdown-preview">
-          <header className="section-header">
-            <p>Markdown</p>
-            <h2>Preview</h2>
-          </header>
-          <MarkdownRenderer value={description} />
-        </section>
 
         <label htmlFor="deadline">Deadline</label>
         <input id="deadline" name="deadline" onChange={(event) => setDeadline(event.target.value)} required type="datetime-local" value={deadline} />

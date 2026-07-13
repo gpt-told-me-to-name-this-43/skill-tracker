@@ -165,6 +165,43 @@
   white-space: nowrap;
 }
 
+.sync-github {
+  border: 0;
+  color: var(--color-text);
+  text-align: left;
+  background: none;
+}
+
+.sync-github:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.sync-github:disabled {
+  opacity: 0.62;
+  background: none;
+}
+
+.sync-status {
+  display: block;
+  padding: 0 10px;
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.github-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .profile-link {
   align-self: end;
 }
@@ -1057,7 +1094,6 @@
 }
 
 .form-section,
-.markdown-preview,
 .member-competencies {
   display: grid;
   gap: 12px;
@@ -1068,7 +1104,6 @@
 }
 
 .task-form .section-header,
-.markdown-preview .section-header,
 .member-competencies .section-header {
   margin-bottom: 0;
 }

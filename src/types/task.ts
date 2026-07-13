@@ -7,6 +7,8 @@ export type UserSummary = {
   avatar_url: string | null;
   position: string | null;
   member_status: MemberStatus;
+  github_login: string | null;
+  is_placeholder: boolean;
 };
 
 export type TeamSummary = {
@@ -74,6 +76,8 @@ export type TaskListItem = {
   labels: Label[];
   attachments_count: number;
   related_tasks_count: number;
+  github_issue_number: number | null;
+  github_url: string | null;
   created_at: string;
   updated_at: string;
 };

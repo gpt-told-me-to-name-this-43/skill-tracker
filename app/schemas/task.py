@@ -114,6 +114,8 @@ class TaskListItem(BaseModel):
     labels: list[LabelRead]
     attachments_count: int
     related_tasks_count: int
+    github_issue_number: int | None = None
+    github_url: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -52,6 +52,12 @@ class Task(Base, IntPKMixin, TimestampMixin):
     )
     approved_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
+    github_issue_number: Mapped[int | None] = mapped_column(
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
     creator: Mapped[User] = relationship(foreign_keys=[creator_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
     labels: Mapped[list[TaskLabel]] = relationship(

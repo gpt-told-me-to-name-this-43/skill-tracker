@@ -429,6 +429,130 @@ async def test_set_task_skills_replaces_rewards_and_checks_task_and_skills():
     assert [(item.skill_id, item.exp_reward) for item in result] == [(2, 10)]
 
 
+async def test_set_task_skills_on_done_task_awards_xp_to_assignee():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.done)]),
+        skill_repo=FakeSkillRepo([skill(1), skill(2)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+
+    await service.set_task_skills(
+        1,
+        TaskSkillsSet(
+            skills=[
+                TaskSkillItem(skill_id=1, exp_reward=50),
+                TaskSkillItem(skill_id=2, exp_reward=30),
+            ]
+        ),
+    )
+
+    assert exp_repo.user_skills[(10, 1)].experience == 50
+    assert exp_repo.user_skills[(10, 2)].experience == 30
+    assert len(exp_repo.logs) == 2
+
+
+async def test_set_task_skills_on_done_task_repeat_does_not_duplicate_xp():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.done)]),
+        skill_repo=FakeSkillRepo([skill(1)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+    payload = TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=50)])
+
+    await service.set_task_skills(1, payload)
+    await service.set_task_skills(1, payload)
+
+    assert exp_repo.user_skills[(10, 1)].experience == 50
+    assert len(exp_repo.logs) == 1
+
+
+async def test_set_task_skills_on_done_task_awards_only_newly_added_skills():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.done)]),
+        skill_repo=FakeSkillRepo([skill(1), skill(2)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+
+    await service.set_task_skills(
+        1, TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=50)])
+    )
+    # Замена набора: навык 1 остаётся (уже начислен), навык 2 добавился.
+    await service.set_task_skills(
+        1,
+        TaskSkillsSet(
+            skills=[
+                TaskSkillItem(skill_id=1, exp_reward=50),
+                TaskSkillItem(skill_id=2, exp_reward=30),
+            ]
+        ),
+    )
+
+    assert exp_repo.user_skills[(10, 1)].experience == 50
+    assert exp_repo.user_skills[(10, 2)].experience == 30
+    assert len(exp_repo.logs) == 2
+
+
+async def test_set_task_skills_on_done_task_changed_reward_is_not_reawarded():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.done)]),
+        skill_repo=FakeSkillRepo([skill(1)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+
+    await service.set_task_skills(
+        1, TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=50)])
+    )
+    await service.set_task_skills(
+        1, TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=100)])
+    )
+
+    assert exp_repo.user_skills[(10, 1)].experience == 50
+    assert len(exp_repo.logs) == 1
+
+
+async def test_set_task_skills_on_done_task_without_assignee_is_noop_for_xp():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.done, assignee_id=None)]),
+        skill_repo=FakeSkillRepo([skill(1)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+
+    result = await service.set_task_skills(
+        1, TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=50)])
+    )
+
+    assert [item.exp_reward for item in result] == [50]
+    assert exp_repo.logs == []
+    assert exp_repo.user_skills == {}
+
+
+async def test_set_task_skills_on_non_done_task_does_not_award_xp():
+    exp_repo = FakeExperienceRepo()
+    service = ExperienceService(
+        experience_repo=exp_repo,
+        task_repo=FakeTaskRepo([task(1, status=TaskStatus.review)]),
+        skill_repo=FakeSkillRepo([skill(1)]),
+        user_repo=FakeUserRepo([user(10)]),
+    )
+
+    await service.set_task_skills(
+        1, TaskSkillsSet(skills=[TaskSkillItem(skill_id=1, exp_reward=50)])
+    )
+
+    assert exp_repo.logs == []
+    assert exp_repo.user_skills == {}
+
+
 async def test_set_task_skills_missing_skill_raises_not_found():
     service = ExperienceService(
         experience_repo=FakeExperienceRepo(),

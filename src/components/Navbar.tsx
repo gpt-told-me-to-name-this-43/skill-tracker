@@ -1,4 +1,9 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import {
+  GITHUB_SYNC_COMPLETED_EVENT,
+  syncGithubIssues,
+} from "../api/integrationsApi";
 import { useAuth } from "../context/useAuth";
 
 const projectLinks = [
@@ -16,6 +21,35 @@ type NavbarProps = {
 export default function Navbar({ collapsed, onToggleCollapsed }: NavbarProps) {
   const { user } = useAuth();
   const canManageProject = user?.role === "admin";
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncError, setSyncError] = useState("");
+
+  useEffect(() => {
+    if (!syncMessage) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setSyncMessage(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [syncMessage]);
+
+  async function handleSyncGithub() {
+    setSyncing(true);
+    setSyncMessage("");
+    setSyncError("");
+    try {
+      const result = await syncGithubIssues();
+      setSyncMessage(
+        `Imported ${result.created} tasks, ${result.users_created} new profiles`,
+      );
+      window.dispatchEvent(new Event(GITHUB_SYNC_COMPLETED_EVENT));
+    } catch {
+      setSyncError("Could not sync GitHub issues.");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   return (
     <aside className="navbar">
@@ -48,6 +82,19 @@ export default function Navbar({ collapsed, onToggleCollapsed }: NavbarProps) {
             <span className="nav-label">{link.label}</span>
           </NavLink>
         ))}
+
+        <button
+          className="navbar-link sync-github"
+          disabled={syncing}
+          onClick={handleSyncGithub}
+          title="Sync GitHub issues"
+          type="button"
+        >
+          <span className="nav-short">GH</span>
+          <span className="nav-label">{syncing ? "Syncing..." : "Sync GitHub issues"}</span>
+        </button>
+        {syncMessage && <small className="nav-label sync-status">{syncMessage}</small>}
+        {syncError && <small className="nav-label sync-status state-error">{syncError}</small>}
       </nav>
 
       <NavLink className="navbar-link profile-link" title="Profile" to="/profile">

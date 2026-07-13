@@ -185,7 +185,10 @@ export default function PeoplePage() {
                   <span className="avatar-fallback">{initials(person.username)}</span>
                 )}
                 <span>
-                  <strong>{person.username}</strong>
+                  <strong>
+                    {person.username}
+                    {person.is_placeholder && <span className="github-badge">GitHub</span>}
+                  </strong>
                   <small>{person.position ?? person.role}</small>
                 </span>
                 <em>{person.member_status}</em>

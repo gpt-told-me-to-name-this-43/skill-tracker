@@ -54,6 +54,14 @@ class TaskRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_task_by_github_issue_number(self, issue_number: int) -> Task | None:
+        result = await self.session.execute(
+            select(Task)
+            .options(selectinload(Task.labels).selectinload(TaskLabel.label))
+            .where(Task.github_issue_number == issue_number)
+        )
+        return result.scalar_one_or_none()
+
     async def get_tasks_by_ids(self, task_ids: Sequence[int]) -> list[Task]:
         if not task_ids:
             return []

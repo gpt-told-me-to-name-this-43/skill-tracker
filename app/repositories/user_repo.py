@@ -70,3 +70,22 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(user)
         return user
+
+    async def get_user_by_github_login(self, github_login: str) -> User | None:
+        result = await self.session.execute(select(User).where(User.github_login == github_login))
+        return result.scalar_one_or_none()
+
+    async def create_placeholder_user(
+        self, github_login: str, email: str, username: str, hashed_password: str
+    ) -> User:
+        user = User(
+            email=email,
+            username=username,
+            hashed_password=hashed_password,
+            github_login=github_login,
+            is_placeholder=True,
+        )
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user

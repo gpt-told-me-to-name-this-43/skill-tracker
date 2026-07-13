@@ -28,6 +28,18 @@ class User(Base, IntPKMixin, TimestampMixin):
         server_default=MemberStatus.active.value,
         nullable=False,
     )
+    github_login: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+    # Профиль-заглушка, созданный импортом из GitHub: логин в приложение невозможен.
+    is_placeholder: Mapped[bool] = mapped_column(
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
 
     skills: Mapped[list[UserSkill]] = relationship(back_populates="user")
     team_membership: Mapped[TeamMember | None] = relationship(

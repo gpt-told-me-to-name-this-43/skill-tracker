@@ -116,6 +116,17 @@ export default function TaskCard({
       <footer className="task-card-footer">
         <span>{task.attachments_count} attachments</span>
         <span>{task.related_tasks_count} related</span>
+        {task.github_url && (
+          <a
+            className="task-card-open"
+            href={task.github_url}
+            onPointerDown={(event) => event.stopPropagation()}
+            rel="noreferrer"
+            target="_blank"
+          >
+            GitHub #{task.github_issue_number}
+          </a>
+        )}
         <Link
           className="task-card-open"
           onPointerDown={(event) => event.stopPropagation()}
