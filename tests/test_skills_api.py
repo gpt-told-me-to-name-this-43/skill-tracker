@@ -1,58 +1,43 @@
 import pytest
 
-from app.api.deps import get_skill_service
-from app.main import app
-from app.models.skill import Skill
-from app.services.skill_service import SkillService
-
-
-class FakeSkillRepo:
-    def __init__(self):
-        self._items: dict[int, Skill] = {}
-        self._counter = 0
-
-    async def get(self, skill_id):
-        return self._items.get(skill_id)
-
-    async def get_by_name(self, name):
-        return next((s for s in self._items.values() if s.name == name), None)
-
-    async def create(self, skill):
-        self._counter += 1
-        skill.id = self._counter
-        self._items[skill.id] = skill
-        return skill
-
-
-@pytest.fixture(autouse=True)
-def skill_service_override():
-    service = SkillService(FakeSkillRepo())
-
-    async def override_get_skill_service():
-        return service
-
-    app.dependency_overrides[get_skill_service] = override_get_skill_service
-    yield
-    app.dependency_overrides.pop(get_skill_service, None)
-
-
-async def test_create_and_get(client):
-    resp = await client.post("/api/v1/skills", json={"name": "Python", "description": "Backend"})
+@pytest.mark.asyncio
+async def test_skills_crud(async_client, auth_headers):
+    # Создание и trim имени
+    resp = await async_client.post("/api/v1/skills", json={"name": " Backend "}, headers=auth_headers)
     assert resp.status_code == 201
-    created = resp.json()
-    assert created["name"] == "Python"
+    assert resp.json()["name"] == "Backend"
 
-    resp = await client.get(f"/api/v1/skills/{created['id']}")
-    assert resp.status_code == 200
-    assert resp.json()["name"] == "Python"
+    # Дубль в другом регистре (409)
+    resp_dup = await async_client.post("/api/v1/skills", json={"name": "BACKEND"}, headers=auth_headers)
+    assert resp_dup.status_code == 409
 
+    # Список
+    list_resp = await async_client.get("/api/v1/skills", headers=auth_headers)
+    assert list_resp.status_code == 200
+    assert isinstance(list_resp.json(), list)
 
-async def test_get_missing_returns_404(client):
-    resp = await client.get("/api/v1/skills/999999")
-    assert resp.status_code == 404
+@pytest.mark.asyncio
+async def test_user_skills_and_progress(async_client, test_user, auth_headers):
+    user_id = test_user["id"]
+    
+    # Пользователь без навыков (200 и нули)
+    prog_resp = await async_client.get(f"/api/v1/users/{user_id}/progress", headers=auth_headers)
+    assert prog_resp.status_code == 200
+    assert prog_resp.json()["total_experience"] == 0
+    assert prog_resp.json()["skills"] == []
 
+    # Создаем навык для теста
+    skill = await async_client.post("/api/v1/skills", json={"name": "TestSkill"}, headers=auth_headers)
+    skill_id = skill.json()["id"]
 
-async def test_create_duplicate_returns_409(client):
-    await client.post("/api/v1/skills", json={"name": "Docker"})
-    resp = await client.post("/api/v1/skills", json={"name": "Docker"})
-    assert resp.status_code == 409
+    # Назначаем навык
+    assign = await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": skill_id}, headers=auth_headers)
+    assert assign.status_code in [200, 201]
+
+    # Повторное назначение (409)
+    dup_assign = await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": skill_id}, headers=auth_headers)
+    assert dup_assign.status_code == 409
+
+    # Несуществующий навык и юзер (404)
+    assert (await async_client.post(f"/api/v1/users/999/skills", json={"skill_id": skill_id}, headers=auth_headers)).status_code == 404
+    assert (await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": 999}, headers=auth_headers)).status_code == 404
