@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
+    upload_dir: str = "uploads"
+
+    github_repo: str = "gpt-told-me-to-name-this-43/skill-tracker"
+    github_token: str | None = None
+    github_api_url: str = "https://api.github.com"
 
 
 @lru_cache

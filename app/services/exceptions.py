@@ -10,6 +10,10 @@ class BadRequestError(DomainError):
     pass
 
 
+class UnprocessableEntityError(DomainError):
+    pass
+
+
 class ConflictError(DomainError):
     __slots__ = ()
 

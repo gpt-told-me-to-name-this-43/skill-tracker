@@ -21,7 +21,7 @@ export default function LoginPage() {
             await login(email, password)
             navigate('/tasks')
         } catch {
-            setError('Не удалось войти. Проверьте email и пароль.')
+            setError('Could not sign in. Check your email and password.')
         } finally {
             setLoading(false)
         }
@@ -36,9 +36,9 @@ export default function LoginPage() {
             <form className="login-form" onSubmit={handleSubmit}>
                 <header className="form-header">
                     <h1>Skill Tracker</h1>
-                    <p>Войдите, чтобы продолжить</p>
+                    <p>Sign in to continue</p>
                 </header>
-                <label htmlFor="email">Электронная почта</label>
+                <label htmlFor="email">Email</label>
                 <input
                     id="email"
                     name="email"
@@ -50,12 +50,12 @@ export default function LoginPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                 />
-                <label htmlFor="password">Пароль</label>
+                <label htmlFor="password">Password</label>
                 <input
                     id="password"
                     name="password"
                     type="password"
-                    placeholder='Введите пароль'
+                    placeholder='Enter password'
                     autoComplete="current-password"
                     required
                     value={password}
@@ -63,7 +63,7 @@ export default function LoginPage() {
                 />
                 {error && <p className="form-error">{error}</p>}
                 <button className="submit-button" type="submit" disabled={!canSubmit}>
-                    {loading ? 'Входим...' : 'Продолжить'}
+                    {loading ? 'Signing in...' : 'Continue'}
                 </button>
             </form>
         </main>

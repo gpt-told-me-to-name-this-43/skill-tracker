@@ -1,14 +1,20 @@
-from fastapi import FastAPI
+from pathlib import Path
 
-from app.api.v1 import auth, experience, skills, tasks, users
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from app.api.v1 import auth, experience, integrations, skills, tasks, teams, users
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, debug=settings.debug)
+    upload_path = Path(settings.upload_dir)
+    upload_path.mkdir(parents=True, exist_ok=True)
 
     register_exception_handlers(app)
+    app.mount("/uploads", StaticFiles(directory=upload_path), name="uploads")
 
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
@@ -19,6 +25,8 @@ def create_app() -> FastAPI:
     app.include_router(experience.router, prefix="/api/v1", tags=["experience"])
     app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
     app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
+    app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
+    app.include_router(integrations.router, prefix="/api/v1", tags=["integrations"])
 
     return app
 

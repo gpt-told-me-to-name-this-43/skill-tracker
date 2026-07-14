@@ -1,7 +1,8 @@
 from fastapi import APIRouter, status
 
 from app.api.deps import AuthServiceDep, CurrentUser
-from app.schemas.auth import TokenResponse, UserLogin, UserRead, UserRegister
+from app.schemas.auth import TokenResponse, UserLogin, UserRegister
+from app.schemas.user import UserRead
 
 router = APIRouter()
 

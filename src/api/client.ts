@@ -5,8 +5,9 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = localStorage.getItem("token");
   const headers = new Headers(options.headers);
+  const isFormData = options.body instanceof FormData;
 
-  if (!headers.has("Content-Type") && options.body !== undefined) {
+  if (!headers.has("Content-Type") && options.body !== undefined && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -14,10 +15,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  const body: BodyInit | null | undefined = options.body === undefined
+    ? undefined
+    : isFormData
+      ? options.body as FormData
+      : JSON.stringify(options.body);
+
   const response = await fetch(`${apiClient.baseUrl}${path}`, {
     ...options,
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body,
   });
 
   if (!response.ok) {
@@ -36,6 +43,7 @@ export const apiClient = {
   baseUrl: "/api/v1",
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

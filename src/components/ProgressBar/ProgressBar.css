@@ -3,7 +3,7 @@
   height: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: #dbe4f0;
+  background: var(--color-border);
 }
 
 .progress-bar span {

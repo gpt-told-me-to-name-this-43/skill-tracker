@@ -2,6 +2,7 @@ import logging
 from collections.abc import Sequence
 from typing import Protocol
 
+from app.models.enums import TaskStatus
 from app.models.experience import ExperienceLog
 from app.models.task import Task, TaskSkill
 from app.repositories.experience_repo import ExperienceRepository
@@ -84,23 +85,32 @@ class ExperienceService:
         task_repo: TaskRepository,
         skill_repo: SkillRepository,
         user_repo: UserRepository,
+        experience_awarder: ExperienceAwarder | None = None,
     ) -> None:
         self.experience_repo = experience_repo
         self.task_repo = task_repo
         self.skill_repo = skill_repo
         self.user_repo = user_repo
+        self.experience_awarder = experience_awarder or DefaultExperienceAwarder(experience_repo)
 
     async def get_task_skills(self, task_id: int) -> Sequence[TaskSkill]:
         await self._ensure_task_exists(task_id)
         return await self.experience_repo.get_task_skills(task_id)
 
     async def set_task_skills(self, task_id: int, data: TaskSkillsSet) -> Sequence[TaskSkill]:
-        await self._ensure_task_exists(task_id)
+        task = await self._ensure_task_exists(task_id)
         for item in data.skills:
             await self._ensure_skill_exists(item.skill_id)
 
         items = [item.model_dump() for item in data.skills]
-        return await self.experience_repo.set_task_skills(task_id, items)
+        task_skills = await self.experience_repo.set_task_skills(task_id, items)
+
+        # Награды, назначенные уже завершённой задаче, начисляются сразу.
+        # Awarder идемпотентен по (task, user, skill): ранее начисленное не дублируется.
+        if task.status == TaskStatus.done:
+            await self.experience_awarder.award_for_task(task)
+
+        return task_skills
 
     async def get_user_log(
         self,
@@ -111,10 +121,11 @@ class ExperienceService:
         await self._ensure_user_exists(user_id)
         return await self.experience_repo.get_user_log(user_id, limit, offset)
 
-    async def _ensure_task_exists(self, task_id: int) -> None:
+    async def _ensure_task_exists(self, task_id: int) -> Task:
         task = await self.task_repo.get_task_by_id(task_id)
         if task is None:
             raise NotFoundError(f"Task with id {task_id} not found")
+        return task
 
     async def _ensure_skill_exists(self, skill_id: int) -> None:
         skill = await self.skill_repo.get(skill_id)

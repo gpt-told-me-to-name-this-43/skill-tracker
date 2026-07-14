@@ -1,10 +1,11 @@
 import asyncio
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.database import async_session_maker
 from app.core.security import hash_password
+from app.models.skill import Skill
 from app.models.user import User
 
 
@@ -17,11 +18,24 @@ class DevUser:
 
 
 DEV_USERS = (
+    # Админ, чтобы демо показывало весь функционал (редактирование участников и т.д.).
     DevUser(
         email="test@example.com",
         username="test",
         password="password123",
+        role="admin",
     ),
+)
+
+DEV_SKILLS = (
+    ("backend", "Server-side development"),
+    ("frontend", "Client-side development"),
+    ("database", "Data modeling and queries"),
+    ("api_design", "API contracts and design"),
+    ("devops", "Infrastructure and delivery"),
+    ("testing", "Automated and manual testing"),
+    ("documentation", "Writing and maintaining docs"),
+    ("debugging", "Investigating and fixing defects"),
 )
 
 
@@ -72,8 +86,30 @@ async def seed_dev_users() -> list[str]:
     return messages
 
 
+async def seed_dev_skills() -> list[str]:
+    messages: list[str] = []
+
+    async with async_session_maker() as session:
+        for name, description in DEV_SKILLS:
+            existing = await session.scalar(
+                select(Skill).where(func.lower(Skill.name) == name.lower())
+            )
+            if existing:
+                messages.append(f"skipped: skill {name!r} already exists")
+                continue
+
+            session.add(Skill(name=name, description=description))
+            messages.append(f"created: skill {name!r}")
+
+        await session.commit()
+
+    return messages
+
+
 async def main() -> None:
     for message in await seed_dev_users():
+        print(message)
+    for message in await seed_dev_skills():
         print(message)
 
 

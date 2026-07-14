@@ -9,6 +9,7 @@ from app.services.exceptions import (
     NotFoundError,
     PermissionDeniedError,
     UnauthorizedError,
+    UnprocessableEntityError,
 )
 
 
@@ -19,6 +20,8 @@ def _error_body(message: str, details: object = None) -> dict:
 def _json_safe(value: object) -> object:
     if isinstance(value, BaseException):
         return str(value)
+    if isinstance(value, bytes | bytearray):
+        return value.decode("utf-8", errors="replace")
     if isinstance(value, dict):
         return {key: _json_safe(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -58,6 +61,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(BadRequestError)
     async def bad_request_handler(_: Request, exc: BadRequestError):
         return JSONResponse(status_code=400, content=_error_body(str(exc)))
+
+    @app.exception_handler(UnprocessableEntityError)
+    async def unprocessable_entity_handler(_: Request, exc: UnprocessableEntityError):
+        return JSONResponse(status_code=422, content=_error_body(str(exc)))
 
     @app.exception_handler(UnauthorizedError)
     async def unauthorized_handler(_: Request, exc: UnauthorizedError):
