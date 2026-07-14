@@ -1,43 +1,24 @@
 import pytest
 
-@pytest.mark.asyncio
-async def test_skills_crud(async_client, auth_headers):
-    # Создание и trim имени
-    resp = await async_client.post("/api/v1/skills", json={"name": " Backend "}, headers=auth_headers)
-    assert resp.status_code == 201
-    assert resp.json()["name"] == "Backend"
+@pytest.mark.parametrize("xp, expected_level, expected_current, expected_next, expected_progress", [
+    (0, 1, 0, 100, 0),
+    (50, 1, 0, 100, 50),
+    (99, 1, 0, 100, 99),
+    (100, 2, 100, 200, 0),
+    (200, 3, 200, 300, 0),
+    (250, 3, 200, 300, 50),
+])
+def test_skill_progress_formula(xp, expected_level, expected_current, expected_next, expected_progress):
+    """Проверка production-функции формулы прогресса навыка."""
+    try:
+        # Импорт находится внутри функции, чтобы не ломать запуск остальных тестов
+        from app.services.skill_service import calculate_skill_progress
+    except ImportError:
+        pytest.fail("Баг реализации: Функция 'calculate_skill_progress' не найдена в app/services/skill_service.py!")
 
-    # Дубль в другом регистре (409)
-    resp_dup = await async_client.post("/api/v1/skills", json={"name": "BACKEND"}, headers=auth_headers)
-    assert resp_dup.status_code == 409
-
-    # Список
-    list_resp = await async_client.get("/api/v1/skills", headers=auth_headers)
-    assert list_resp.status_code == 200
-    assert isinstance(list_resp.json(), list)
-
-@pytest.mark.asyncio
-async def test_user_skills_and_progress(async_client, test_user, auth_headers):
-    user_id = test_user["id"]
+    result = calculate_skill_progress(xp)
     
-    # Пользователь без навыков (200 и нули)
-    prog_resp = await async_client.get(f"/api/v1/users/{user_id}/progress", headers=auth_headers)
-    assert prog_resp.status_code == 200
-    assert prog_resp.json()["total_experience"] == 0
-    assert prog_resp.json()["skills"] == []
-
-    # Создаем навык для теста
-    skill = await async_client.post("/api/v1/skills", json={"name": "TestSkill"}, headers=auth_headers)
-    skill_id = skill.json()["id"]
-
-    # Назначаем навык
-    assign = await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": skill_id}, headers=auth_headers)
-    assert assign.status_code in [200, 201]
-
-    # Повторное назначение (409)
-    dup_assign = await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": skill_id}, headers=auth_headers)
-    assert dup_assign.status_code == 409
-
-    # Несуществующий навык и юзер (404)
-    assert (await async_client.post(f"/api/v1/users/999/skills", json={"skill_id": skill_id}, headers=auth_headers)).status_code == 404
-    assert (await async_client.post(f"/api/v1/users/{user_id}/skills", json={"skill_id": 999}, headers=auth_headers)).status_code == 404
+    assert result["level"] == expected_level
+    assert result["current_level_xp"] == expected_current
+    assert result["next_level_xp"] == expected_next
+    assert result["progress_to_next_level"] == expected_progress

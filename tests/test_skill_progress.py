@@ -1,5 +1,4 @@
 import pytest
-from app.services.skill_service import calculate_skill_progress
 
 @pytest.mark.parametrize("xp, expected_level, expected_current, expected_next, expected_progress", [
     (0, 1, 0, 100, 0),
@@ -10,7 +9,11 @@ from app.services.skill_service import calculate_skill_progress
     (250, 3, 200, 300, 50),
 ])
 def test_skill_progress_formula(xp, expected_level, expected_current, expected_next, expected_progress):
-    """Проверка production-функции формулы прогресса навыка."""
+    try:
+        from app.services.skill_service import calculate_skill_progress
+    except ImportError:
+        pytest.fail("Error: calculate_skill_progress not found in app/services/skill_service.py!")
+
     result = calculate_skill_progress(xp)
     
     assert result["level"] == expected_level
