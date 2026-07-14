@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Query, Request, status
 
-from app.api.deps import CurrentUser, ExperienceServiceDep, TaskLintServiceDep, TaskServiceDep
+from app.api.deps import (
+    CurrentUser,
+    ExperienceServiceDep,
+    TaskLintServiceDep,
+    TaskServiceDep,
+    TaskSuggestionServiceDep,
+)
 from app.models.enums import TaskStatus
 from app.schemas.experience import TaskSkillRead, TaskSkillsSet
 from app.schemas.label import LabelCreate, LabelRead, TaskLabelsSet
@@ -17,6 +23,7 @@ from app.schemas.task import (
     TaskStatusUpdate,
     TaskUpdate,
 )
+from app.schemas.task_suggestion import TaskAnalyzeRequest, TaskFieldSuggestion
 from app.services.exceptions import BadRequestError
 
 router = APIRouter()
@@ -85,6 +92,17 @@ async def create_task(
 ):
     """Создать новую задачу от имени текущего пользователя."""
     return await service.create_task(data, creator_id=current_user.id)
+
+
+# Объявлен до маршрутов /tasks/{task_id}: иначе "analyze" уйдёт в int-параметр.
+@router.post("/tasks/analyze", response_model=TaskFieldSuggestion)
+async def analyze_task(
+    data: TaskAnalyzeRequest,
+    service: TaskSuggestionServiceDep,
+    current_user: CurrentUser,
+):
+    """Предложить labels, skills и difficulty для задачи с помощью ML."""
+    return await service.analyze(data)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskDetail)

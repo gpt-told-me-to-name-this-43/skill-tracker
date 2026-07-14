@@ -4,6 +4,7 @@ import type {
   Skill,
   TaskAttachment,
   TaskDetail,
+  TaskFieldSuggestion,
   TaskLintReport,
   TaskListItem,
   TaskSkill,
@@ -99,6 +100,15 @@ export function deleteTaskAttachment(taskId: number, attachmentId: number): Prom
 
 export function setRelatedTasks(taskId: number, taskIds: number[]): Promise<RelatedTask[]> {
   return apiClient.put<RelatedTask[]>(`/tasks/${taskId}/related`, { task_ids: taskIds });
+}
+
+export type AnalyzeTaskPayload = {
+  title: string;
+  description?: string | null;
+};
+
+export function analyzeTask(payload: AnalyzeTaskPayload): Promise<TaskFieldSuggestion> {
+  return apiClient.post<TaskFieldSuggestion>("/tasks/analyze", payload);
 }
 
 export function getTaskLint(taskId: number): Promise<TaskLintReport> {

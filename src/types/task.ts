@@ -105,3 +105,10 @@ export type TaskLintReport = {
   task_id: number;
   warnings: TaskLintWarning[];
 };
+
+export type TaskFieldSuggestion = {
+  difficulty: number;
+  deadline: string | null;
+  labels: Label[];
+  skills: TaskSkill[];
+};

@@ -2,6 +2,19 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
+function getErrorMessage(body: string, status: number) {
+  try {
+    const payload = JSON.parse(body) as { error?: { message?: unknown } };
+    if (typeof payload.error?.message === "string") {
+      return payload.error.message;
+    }
+  } catch {
+    // Keep a non-JSON response as the fallback message.
+  }
+
+  return body || `Request failed with status ${status}`;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = localStorage.getItem("token");
   const headers = new Headers(options.headers);
@@ -29,7 +42,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    throw new Error(getErrorMessage(message, response.status));
   }
 
   if (response.status === 204) {

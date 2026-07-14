@@ -1266,6 +1266,22 @@
   color: var(--color-muted);
 }
 
+.ml-analyze-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ml-analyze-status {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.ml-analyze-status.is-error {
+  color: var(--color-danger);
+}
+
 .profile-hero {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr) auto;
