@@ -8,6 +8,7 @@ from app.services.exceptions import (
     ConflictError,
     NotFoundError,
     PermissionDeniedError,
+    ServiceUnavailableError,
     UnauthorizedError,
     UnprocessableEntityError,
 )
@@ -61,6 +62,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(BadRequestError)
     async def bad_request_handler(_: Request, exc: BadRequestError):
         return JSONResponse(status_code=400, content=_error_body(str(exc)))
+
+    @app.exception_handler(ServiceUnavailableError)
+    async def service_unavailable_handler(_: Request, exc: ServiceUnavailableError):
+        return JSONResponse(status_code=503, content=_error_body(str(exc)))
 
     @app.exception_handler(UnprocessableEntityError)
     async def unprocessable_entity_handler(_: Request, exc: UnprocessableEntityError):

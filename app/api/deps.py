@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.integrations.github_client import GitHubClient, GitHubIssueSource
+from app.integrations.openrouter_client import OpenRouterClient, TaskSuggestionSource
 from app.models.user import User
 from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
@@ -20,6 +21,7 @@ from app.services.github_import_service import GitHubImportService
 from app.services.skill_service import SkillService
 from app.services.task_lint_service import TaskLintService
 from app.services.task_service import TaskService
+from app.services.task_suggestion_service import TaskSuggestionService
 from app.services.team_service import TeamService
 from app.services.user_service import UserService
 
@@ -101,6 +103,35 @@ async def get_github_import_service(
 
 
 GitHubImportServiceDep = Annotated[GitHubImportService, Depends(get_github_import_service)]
+
+
+async def get_task_suggestion_source() -> TaskSuggestionSource | None:
+    if not settings.openrouter_api_key:
+        return None
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key,
+        model=settings.openrouter_model,
+        api_url=settings.openrouter_api_url,
+    )
+
+
+TaskSuggestionSourceDep = Annotated[
+    TaskSuggestionSource | None, Depends(get_task_suggestion_source)
+]
+
+
+async def get_task_suggestion_service(
+    db: DbSession,
+    source: TaskSuggestionSourceDep,
+) -> TaskSuggestionService:
+    return TaskSuggestionService(
+        task_repo=TaskRepository(db),
+        skill_repo=SkillRepository(db),
+        source=source,
+    )
+
+
+TaskSuggestionServiceDep = Annotated[TaskSuggestionService, Depends(get_task_suggestion_service)]
 
 
 async def get_user_service(db: DbSession) -> UserService:

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { DragEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,8 +13,10 @@ import {
 } from "../../api/tasksApi";
 import { getUsers, type User } from "../../api/usersApi";
 import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
-import type { Label, Skill, TaskListItem } from "../../types/task";
-import { toApiDateTime } from "../../utils/dateTime";
+import TaskAnalysisControl from "../../components/TaskAnalysisControl/TaskAnalysisControl";
+import { useTaskAnalysis } from "../../hooks/useTaskAnalysis";
+import type { Label, Skill, TaskFieldSuggestion, TaskListItem } from "../../types/task";
+import { toApiDateTime, toDateTimeLocalInput } from "../../utils/dateTime";
 
 export default function CreateTaskPage() {
   const navigate = useNavigate();
@@ -35,6 +37,17 @@ export default function CreateTaskPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const applySuggestion = useCallback((suggestion: TaskFieldSuggestion) => {
+    setDifficulty(String(suggestion.difficulty));
+    if (suggestion.deadline) {
+      setDeadline(toDateTimeLocalInput(suggestion.deadline));
+    }
+    setSelectedLabels(suggestion.labels.map((label) => label.id));
+    setSelectedSkillRewards(
+      Object.fromEntries(suggestion.skills.map((item) => [item.skill.id, item.exp_reward])),
+    );
+  }, []);
+  const { analyze, analyzing, message: analyzeMessage, status: analyzeStatus } = useTaskAnalysis(applySuggestion);
 
   useEffect(() => {
     async function loadFormData() {
@@ -90,6 +103,10 @@ export default function CreateTaskPage() {
     event.stopPropagation();
     setDragActive(false);
     addFiles(event.dataTransfer.files);
+  }
+
+  async function handleAnalyze() {
+    await analyze({ title, description: description || null });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -153,6 +170,15 @@ export default function CreateTaskPage() {
           placeholder="You can use Markdown here"
           required
           value={description}
+        />
+
+        <TaskAnalysisControl
+          analyzing={analyzing}
+          disabled={title.trim() === ""}
+          errorMessage={analyzeMessage}
+          onAnalyze={() => void handleAnalyze()}
+          status={analyzeStatus}
+          successMessage="Suggestions applied — review labels, skills, difficulty and deadline before saving."
         />
 
         <label htmlFor="deadline">Deadline</label>

@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     github_token: str | None = None
     github_api_url: str = "https://api.github.com"
 
+    openrouter_api_key: str | None = None
+    openrouter_model: str = "poolside/laguna-xs-2.1:free"
+    openrouter_api_url: str = "https://openrouter.ai/api/v1"
+
 
 @lru_cache
 def get_settings() -> Settings:

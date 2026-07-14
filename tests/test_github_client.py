@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from app.integrations.github_client import GitHubClient
-from app.services.exceptions import BadRequestError, NotFoundError
+from app.services.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError
 
 REPO = "acme/widgets"
 API_URL = "https://gh.test"
@@ -149,9 +149,17 @@ async def test_fetch_issues_auth_and_rate_limit_raise_bad_request(status_code):
         await _client(handler).fetch_issues()
 
 
-async def test_fetch_issues_server_error_raises_bad_request():
+async def test_fetch_issues_server_error_raises_service_unavailable():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500, content=json.dumps({"message": "boom"}))
 
-    with pytest.raises(BadRequestError):
+    with pytest.raises(ServiceUnavailableError):
+        await _client(handler).fetch_issues()
+
+
+async def test_fetch_issues_connection_error_raises_service_unavailable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("Proxy is unavailable", request=request)
+
+    with pytest.raises(ServiceUnavailableError, match="unreachable"):
         await _client(handler).fetch_issues()

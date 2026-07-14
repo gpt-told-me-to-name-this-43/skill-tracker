@@ -24,3 +24,9 @@ class PermissionDeniedError(DomainError):
 
 class UnauthorizedError(DomainError):
     __slots__ = ()
+
+
+class ServiceUnavailableError(DomainError):
+    """Внешняя зависимость временно недоступна."""
+
+    __slots__ = ()

@@ -22,8 +22,10 @@ import { getUsers, type User } from "../../api/usersApi";
 import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
 import MarkdownRenderer from "../../components/MarkdownRenderer/MarkdownRenderer";
 import StatusBadge from "../../components/StatusBadge/StatusBadge";
+import TaskAnalysisControl from "../../components/TaskAnalysisControl/TaskAnalysisControl";
 import { statusLabels } from "../../constants/taskStatus";
-import type { Label, Skill, TaskDetail, TaskLintReport, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
+import { useTaskAnalysis } from "../../hooks/useTaskAnalysis";
+import type { Label, Skill, TaskDetail, TaskFieldSuggestion, TaskLintReport, TaskListItem, TaskSkill, TaskStatus } from "../../types/task";
 import { formatDateTime, toApiDateTime, toDateTimeLocalInput } from "../../utils/dateTime";
 
 const statuses: TaskStatus[] = ["todo", "in_progress", "review", "done"];
@@ -69,6 +71,23 @@ export default function TaskDetailsPage() {
   const [lintReport, setLintReport] = useState<TaskLintReport | null>(null);
   const [lintError, setLintError] = useState("");
   const lintRequestRef = useRef(0);
+  const applySuggestion = useCallback((suggestion: TaskFieldSuggestion) => {
+    setDifficultyInput(String(suggestion.difficulty));
+    if (suggestion.deadline) {
+      setDeadlineInput(toDateTimeLocalInput(suggestion.deadline));
+    }
+    setSelectedLabels(suggestion.labels.map((label) => label.id));
+    setSelectedSkillRewards(Object.fromEntries(
+      suggestion.skills.map((item) => [item.skill.id, item.exp_reward]),
+    ));
+  }, []);
+  const {
+    analyze,
+    analyzing,
+    cancel: cancelAnalysis,
+    message: analyzeMessage,
+    status: analyzeStatus,
+  } = useTaskAnalysis(applySuggestion);
 
   const refreshLint = useCallback(async (id: number) => {
     const requestId = ++lintRequestRef.current;
@@ -255,6 +274,7 @@ export default function TaskDetailsPage() {
     setDescriptionInput(task.description ?? "");
     setDifficultyInput(String(task.difficulty));
     setAssigneeInput(task.assignee_id ? String(task.assignee_id) : "");
+    cancelAnalysis();
     setEditingTask(true);
   }
 
@@ -267,7 +287,12 @@ export default function TaskDetailsPage() {
     setDescriptionInput(task.description ?? "");
     setDifficultyInput(String(task.difficulty));
     setAssigneeInput(task.assignee_id ? String(task.assignee_id) : "");
+    cancelAnalysis();
     setEditingTask(false);
+  }
+
+  async function handleAnalyze() {
+    await analyze({ title: titleInput, description: descriptionInput || null });
   }
 
   async function handleSaveLabels() {
@@ -455,6 +480,15 @@ export default function TaskDetailsPage() {
               onChange={setDescriptionInput}
               placeholder="You can use Markdown here"
               value={descriptionInput}
+            />
+
+            <TaskAnalysisControl
+              analyzing={analyzing}
+              disabled={saving || titleInput.trim() === ""}
+              errorMessage={analyzeMessage}
+              onAnalyze={() => void handleAnalyze()}
+              status={analyzeStatus}
+              successMessage="Suggestions applied — review difficulty here, deadline below and labels/skills in the sidebar, then save."
             />
 
             <section className="task-edit-grid">
