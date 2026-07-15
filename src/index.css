@@ -127,19 +127,22 @@ svg * {
 }
 
 :root {
-  --color-bg: #f4f7fb;
+  --color-bg: #f6f7f9;
   --color-surface: #ffffff;
-  --color-text: #172b4d;
-  --color-muted: #64748b;
-  --color-border: #dbe4f0;
-  --color-primary: #246bfe;
-  --color-primary-dark: #175be6;
-  --color-success: #1f9d55;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-text: #17202e;
+  --color-muted: #6b7280;
+  --color-border: #d9dee7;
+  --color-primary: #0c66e4;
+  --color-primary-dark: #0747a6;
+  --color-primary-soft: #e9f2ff;
+  --color-success: #1f845a;
+  --color-warning: #b65c02;
+  --color-danger: #c9372c;
+  --color-card: #ffffff;
+  --color-subtle: #f1f2f4;
 
   --radius: 8px;
-  --container-width: 1040px;
+  --container-width: 1440px;
 
   font-family: "Segoe UI", Arial, sans-serif;
   color: var(--color-text);

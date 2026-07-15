@@ -8,6 +8,12 @@ class TaskStatus(str, enum.Enum):
     done = "done"
 
 
+class MemberStatus(str, enum.Enum):
+    active = "active"
+    away = "away"
+    inactive = "inactive"
+
+
 class Difficulty(int, enum.Enum):
     trivial = 1
     easy = 2

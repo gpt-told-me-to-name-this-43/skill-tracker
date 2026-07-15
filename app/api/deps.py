@@ -1,16 +1,29 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from fastapi import Depends, Query
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.integrations.github_client import GitHubClient, GitHubIssueSource
+from app.integrations.openrouter_client import OpenRouterClient, TaskSuggestionSource
 from app.models.user import User
+from app.repositories.experience_repo import ExperienceRepository
 from app.repositories.skill_repo import SkillRepository
+from app.repositories.task_repo import TaskRepository
+from app.repositories.team_repo import TeamRepository
+from app.repositories.user_repo import UserRepository
+from app.services.auth_service import AuthService
+from app.services.exceptions import UnauthorizedError
+from app.services.experience import DefaultExperienceAwarder, ExperienceService
+from app.services.github_import_service import GitHubImportService
 from app.services.skill_service import SkillService
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+from app.services.task_lint_service import TaskLintService
+from app.services.task_service import TaskService
+from app.services.task_suggestion_service import TaskSuggestionService
+from app.services.team_service import TeamService
+from app.services.user_service import UserService
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -20,6 +33,119 @@ async def get_skill_service(db: DbSession) -> SkillService:
 
 
 SkillServiceDep = Annotated[SkillService, Depends(get_skill_service)]
+
+
+async def get_task_service(db: DbSession) -> TaskService:
+    """
+    Dependency для TaskService.
+
+    Инжектит ExperienceAwarder для начисления XP при переходе задачи в done.
+    """
+    task_repo = TaskRepository(db)
+    user_repo = UserRepository(db)
+
+    awarder = DefaultExperienceAwarder(ExperienceRepository(db))
+
+    return TaskService(
+        task_repo=task_repo,
+        user_repo=user_repo,
+        experience_awarder=awarder,
+    )
+
+
+TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+
+async def get_task_lint_service(db: DbSession) -> TaskLintService:
+    return TaskLintService(
+        task_repo=TaskRepository(db),
+        experience_repo=ExperienceRepository(db),
+    )
+
+
+TaskLintServiceDep = Annotated[TaskLintService, Depends(get_task_lint_service)]
+
+
+async def get_experience_service(db: DbSession) -> ExperienceService:
+    experience_repo = ExperienceRepository(db)
+    return ExperienceService(
+        experience_repo=experience_repo,
+        task_repo=TaskRepository(db),
+        skill_repo=SkillRepository(db),
+        user_repo=UserRepository(db),
+        experience_awarder=DefaultExperienceAwarder(experience_repo),
+    )
+
+
+ExperienceServiceDep = Annotated[ExperienceService, Depends(get_experience_service)]
+
+
+async def get_github_issue_source() -> GitHubIssueSource:
+    return GitHubClient(
+        repo=settings.github_repo,
+        api_url=settings.github_api_url,
+        token=settings.github_token,
+    )
+
+
+GitHubIssueSourceDep = Annotated[GitHubIssueSource, Depends(get_github_issue_source)]
+
+
+async def get_github_import_service(
+    db: DbSession,
+    source: GitHubIssueSourceDep,
+) -> GitHubImportService:
+    return GitHubImportService(
+        source=source,
+        task_repo=TaskRepository(db),
+        user_repo=UserRepository(db),
+    )
+
+
+GitHubImportServiceDep = Annotated[GitHubImportService, Depends(get_github_import_service)]
+
+
+async def get_task_suggestion_source() -> TaskSuggestionSource | None:
+    if not settings.openrouter_api_key:
+        return None
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key,
+        model=settings.openrouter_model,
+        api_url=settings.openrouter_api_url,
+    )
+
+
+TaskSuggestionSourceDep = Annotated[
+    TaskSuggestionSource | None, Depends(get_task_suggestion_source)
+]
+
+
+async def get_task_suggestion_service(
+    db: DbSession,
+    source: TaskSuggestionSourceDep,
+) -> TaskSuggestionService:
+    return TaskSuggestionService(
+        task_repo=TaskRepository(db),
+        skill_repo=SkillRepository(db),
+        source=source,
+    )
+
+
+TaskSuggestionServiceDep = Annotated[TaskSuggestionService, Depends(get_task_suggestion_service)]
+
+
+async def get_user_service(db: DbSession) -> UserService:
+    return UserService(UserRepository(db))
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+async def get_team_service(db: DbSession) -> TeamService:
+    return TeamService(TeamRepository(db))
+
+
+TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]
 
 
 class Pagination:
@@ -41,33 +167,26 @@ async def get_pagination(
 
 PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
+# Логин отдаёт JWT через JSON POST /api/v1/auth/login; в Swagger Authorize
+# вставляется готовый токен, поэтому схема — Bearer, а не OAuth2 password flow.
+bearer_scheme = HTTPBearer(auto_error=False)
 
-def unauthorized_error() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+
+async def get_auth_service(db: DbSession) -> AuthService:
+    return AuthService(UserRepository(db))
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: DbSession,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    auth_service: AuthServiceDep,
 ) -> User:
-    from app.core.security import decode_access_token
+    if credentials is None:
+        raise UnauthorizedError("Not authenticated")
 
-    try:
-        payload = decode_access_token(token)
-        user_id = int(payload["sub"])
-    except Exception:
-        raise unauthorized_error() from None
-
-    user = await db.scalar(select(User).where(User.id == user_id))
-
-    if user is None:
-        raise unauthorized_error()
-
-    return user
+    return await auth_service.get_user_from_token(credentials.credentials)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

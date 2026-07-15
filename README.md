@@ -28,11 +28,14 @@ Python 3.12+, Node.js 20+.
     Skill         id, name, description
     UserSkill     id, user_id, skill_id, experience, level        (User M:N Skill)
     Task          id, title, description, status, difficulty, deadline,
-                  creator_id, assignee_id, created_at, updated_at
+                  creator_id, assignee_id, approved_by_id, approved_at,
+                  created_at, updated_at
     TaskSkill     id, task_id, skill_id, exp_reward               (Task M:N Skill)
     ExperienceLog id, user_id, skill_id, task_id, amount, created_at
 
 - `Task.status`: enum `todo | in_progress | review | done`
+- `done` разрешён только из `review` после approval; задачу нельзя закрыть сразу
+  из `todo` или `in_progress`
 - `Task.difficulty`: int 1..5
 - `UserSkill.level`: вычисляется от `experience` по порогам
 - `User` ссылается на `Task` дважды: как creator и как assignee
@@ -40,6 +43,8 @@ Python 3.12+, Node.js 20+.
 
 Начисление опыта: `Task -> done` => сервис читает `TaskSkill` задачи => начисляет
 `exp_reward` в `UserSkill` исполнителя => пишет `ExperienceLog` => пересчитывает level.
+Для начисления задачу сначала нужно перевести в `review`, апрувнуть, затем перевести
+в `done`.
 
 ## Процесс разработки
 
@@ -53,3 +58,31 @@ Python 3.12+, Node.js 20+.
 - [QA Тест-кейсы](docs/test-cases.md)
 - [Итоговый QA-отчет](docs/qa-report.md)
 
+## Локальный запуск
+
+1. Скопировать переменные окружения:
+
+       cp .env.example .env
+
+2. Поднять сервисы:
+
+       docker compose up --build
+
+3. В другом терминале создать тестового пользователя:
+
+       docker compose exec api python -m app.dev_seed
+
+   Команда идемпотентная: при повторном запуске она не создаёт дубли.
+
+4. Открыть фронтенд отдельно через Vite:
+
+       npm install
+       npm run dev
+
+   API доступно на `http://localhost:8000`, фронтенд Vite обычно на
+   `http://localhost:5173`.
+
+Тестовый вход после seed-команды:
+
+    email: test@example.com
+    password: password123

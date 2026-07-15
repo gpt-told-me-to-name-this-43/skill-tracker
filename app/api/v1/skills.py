@@ -20,7 +20,6 @@ async def list_skills(service: SkillServiceDep, pagination: PaginationDep):
 
 @router.post("/skills", response_model=SkillRead, status_code=status.HTTP_201_CREATED)
 async def create_skill(data: SkillCreate, service: SkillServiceDep):
-    # TODO(epic:auth): admin-only, return 403 for non-admin users
     return await service.create(data)
 
 

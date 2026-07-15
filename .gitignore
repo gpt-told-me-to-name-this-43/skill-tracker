@@ -22,6 +22,7 @@ venv/
 
 # Local environment
 .env
+uploads/
 
 # Editor directories and files
 .vscode/*

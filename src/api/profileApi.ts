@@ -1,30 +1,32 @@
 import { apiClient } from "./client";
 
-export type Profile = {
-  name: string;
-  email: string;
-  totalXp: number;
-};
-
 export type Skill = {
   id: number;
   name: string;
+  description: string | null;
+};
+
+export type UserSkill = {
+  skill: Skill;
   level: number;
   experience: number;
+  current_level_xp: number;
+  next_level_xp: number;
+  progress_to_next_level: number;
 };
 
 export type ProfileProgress = {
-  averageLevel: number;
+  user_id: number;
+  total_experience: number;
+  skills_count: number;
+  average_level: number;
+  skills: UserSkill[];
 };
 
-export function getProfile(): Promise<Profile> {
-  return apiClient.get<Profile>("/profile");
+export function getUserSkills(userId: number): Promise<UserSkill[]> {
+  return apiClient.get<UserSkill[]>(`/users/${userId}/skills`);
 }
 
-export function getSkills(): Promise<Skill[]> {
-  return apiClient.get<Skill[]>("/profile/skills");
-}
-
-export function getProgress(): Promise<ProfileProgress> {
-  return apiClient.get<ProfileProgress>("/profile/progress");
+export function getUserProgress(userId: number): Promise<ProfileProgress> {
+  return apiClient.get<ProfileProgress>(`/users/${userId}/progress`);
 }

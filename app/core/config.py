@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
+    upload_dir: str = "uploads"
+
+    github_repo: str = "gpt-told-me-to-name-this-43/skill-tracker"
+    github_token: str | None = None
+    github_api_url: str = "https://api.github.com"
+
+    openrouter_api_key: str | None = None
+    openrouter_model: str = "poolside/laguna-xs-2.1:free"
+    openrouter_api_url: str = "https://openrouter.ai/api/v1"
 
 
 @lru_cache

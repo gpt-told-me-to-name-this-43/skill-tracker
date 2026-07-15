@@ -4,14 +4,32 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.services.exceptions import (
+    BadRequestError,
     ConflictError,
     NotFoundError,
     PermissionDeniedError,
+    ServiceUnavailableError,
+    UnauthorizedError,
+    UnprocessableEntityError,
 )
 
 
 def _error_body(message: str, details: object = None) -> dict:
     return {"error": {"message": message, "details": details}}
+
+
+def _json_safe(value: object) -> object:
+    if isinstance(value, BaseException):
+        return str(value)
+    if isinstance(value, bytes | bytearray):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_json_safe(item) for item in value)
+    return value
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -26,7 +44,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def validation_exception_handler(_: Request, exc: RequestValidationError):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=_error_body("Validation error", exc.errors()),
+            content=_error_body("Validation error", _json_safe(exc.errors())),
         )
 
     @app.exception_handler(NotFoundError)
@@ -40,3 +58,23 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(PermissionDeniedError)
     async def permission_handler(_: Request, exc: PermissionDeniedError):
         return JSONResponse(status_code=403, content=_error_body(str(exc)))
+
+    @app.exception_handler(BadRequestError)
+    async def bad_request_handler(_: Request, exc: BadRequestError):
+        return JSONResponse(status_code=400, content=_error_body(str(exc)))
+
+    @app.exception_handler(ServiceUnavailableError)
+    async def service_unavailable_handler(_: Request, exc: ServiceUnavailableError):
+        return JSONResponse(status_code=503, content=_error_body(str(exc)))
+
+    @app.exception_handler(UnprocessableEntityError)
+    async def unprocessable_entity_handler(_: Request, exc: UnprocessableEntityError):
+        return JSONResponse(status_code=422, content=_error_body(str(exc)))
+
+    @app.exception_handler(UnauthorizedError)
+    async def unauthorized_handler(_: Request, exc: UnauthorizedError):
+        return JSONResponse(
+            status_code=401,
+            content=_error_body(str(exc)),
+            headers={"WWW-Authenticate": "Bearer"},
+        )

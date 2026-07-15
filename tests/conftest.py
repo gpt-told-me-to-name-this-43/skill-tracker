@@ -1,57 +1,124 @@
-import uuid
-import pytest
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 from app.main import app
-# Пробуем импортировать базу (если она лежит в app.core.database или app.database)
-try:
-    from app.core.database import engine, get_db
-except ImportError:
-    from app.database import engine, get_db  # Fallback
+from app.models import Base, Label, Skill, Task, TaskLabel, TaskSkill, User
+from app.models.enums import MemberStatus
+from app.repositories.task_repo import TaskRepository
+from app.repositories.user_repo import UserRepository
+from app.services.task_service import TaskService
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session():
-    """Отдельная тестовая БД / rollback после тестов для изоляции (требование таски)"""
-    connection = await engine.connect()
-    transaction = await connection.begin()
-    
-    session_maker = async_sessionmaker(bind=connection, class_=AsyncSession, expire_on_commit=False)
-    session = session_maker()
-    
-    yield session
-    
-    await session.close()
-    await transaction.rollback()
-    await connection.close()
 
-@pytest_asyncio.fixture(autouse=True)
-def override_dependency(db_session):
-    """Очистка dependency_overrides после тестов"""
-    app.dependency_overrides[get_db] = lambda: db_session
-    yield
+@pytest_asyncio.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
     app.dependency_overrides.clear()
 
-@pytest_asyncio.fixture(scope="function")
-async def async_client():
-    """Async client для FastAPI"""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
 
-@pytest_asyncio.fixture(scope="function")
-async def auth_headers(async_client):
-    """Фикстура для заголовков авторизации"""
-    uid = uuid.uuid4().hex[:6]
-    user_data = {"email": f"test_{uid}@example.com", "username": f"user_{uid}", "password": "password123"}
-    await async_client.post("/api/v1/auth/register", json=user_data)
-    resp = await async_client.post("/api/v1/auth/login", json={"email": user_data["email"], "password": "password123"})
-    token = resp.json().get("access_token", "fake_token")
-    return {"Authorization": f"Bearer {token}"}
+@pytest_asyncio.fixture
+async def db_session():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", poolclass=StaticPool)
 
-@pytest_asyncio.fixture(scope="function")
-async def test_user(async_client, auth_headers):
-    """Фикстура для получения данных текущего пользователя"""
-    resp = await async_client.get("/api/v1/auth/me", headers=auth_headers)
-    return resp.json()
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_foreign_keys(dbapi_connection, _connection_record):
+        # SQLite silently ignores ON DELETE CASCADE unless this pragma is on.
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with session_maker() as session:
+        yield session
+
+    await engine.dispose()
+
+
+@dataclass(frozen=True)
+class TaskFixtures:
+    creator: User
+    assignee: User
+    task: Task
+    other_task: Task
+    third_task: Task
+    backend_label: Label
+    frontend_label: Label
+
+
+def build_task_service(session: AsyncSession) -> TaskService:
+    """TaskService over real repositories. XP awarding is not exercised here."""
+    return TaskService(
+        task_repo=TaskRepository(session),
+        user_repo=UserRepository(session),
+        experience_awarder=None,
+    )
+
+
+async def seed_task_fixtures(session: AsyncSession) -> TaskFixtures:
+    creator = User(
+        username="creator",
+        email="creator@example.com",
+        hashed_password="hashed",
+        role="user",
+        position="Team Lead",
+        member_status=MemberStatus.active.value,
+    )
+    assignee = User(
+        username="developer",
+        email="developer@example.com",
+        hashed_password="hashed",
+        role="user",
+        position="Frontend Developer",
+        member_status=MemberStatus.active.value,
+    )
+    session.add_all([creator, assignee])
+    await session.flush()
+
+    task = Task(title="Add Kanban", creator_id=creator.id, assignee_id=assignee.id)
+    other_task = Task(title="Implement labels", creator_id=creator.id)
+    third_task = Task(title="Write docs", creator_id=creator.id)
+    backend_label = Label(name="Backend", color="#3B82F6")
+    frontend_label = Label(name="Frontend", color="#10B981")
+    session.add_all([task, other_task, third_task, backend_label, frontend_label])
+    await session.flush()
+
+    # Detach the seeded instances so the code under test reloads them with a real SELECT,
+    # the way a request does. Objects constructed in-session keep their relationship
+    # collections pinned in the identity map, which would mask stale-read regressions.
+    session.expunge_all()
+
+    return TaskFixtures(
+        creator=creator,
+        assignee=assignee,
+        task=task,
+        other_task=other_task,
+        third_task=third_task,
+        backend_label=backend_label,
+        frontend_label=frontend_label,
+    )
+
+
+async def make_task_clean(session: AsyncSession, fixtures: TaskFixtures) -> None:
+    """Дополняет seed-задачу до состояния без единого lint-предупреждения."""
+    skill = Skill(name="Python")
+    session.add(skill)
+    await session.flush()
+    session.add_all(
+        [
+            TaskSkill(task_id=fixtures.task.id, skill_id=skill.id, exp_reward=50),
+            TaskLabel(task_id=fixtures.task.id, label_id=fixtures.backend_label.id),
+        ]
+    )
+    task = await session.get(Task, fixtures.task.id)
+    task.description = "A long enough description of the kanban work."
+    task.deadline = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7)
+    await session.flush()
+    session.expunge_all()

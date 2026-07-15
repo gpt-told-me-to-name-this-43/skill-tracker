@@ -35,7 +35,7 @@
 | SK-6 | Повторное назначение | Навык выдан | POST /users/{id}/skills тот же | 409 Conflict | blocked | spec:Skills |
 | SK-7 | Получение навыков юзера | Есть навык | GET /users/{id}/skills | 200 OK, список навыков | blocked | spec:Skills |
 | SK-8 | Получение прогресса | - | GET /users/{id}/progress | 200 OK, поля прогресса присутствуют | blocked | spec:Skills |
-| SK-9 | Юзер без навыков | Навыков нет | GET /users/{id}/skills | 200 OK, `[]` и нули в прогрессе | blocked | decisions |
+| SK-9 | Юзер без навыков | Навыков нет | GET /users/{id}/skills и GET /users/{id}/progress | `/skills`: 200 OK, `[]`; `/progress`: 200 OK, нули в агрегатах | blocked | decisions |
 | SK-10| Юзер 404 | Юзера нет | Запросить скиллы ID=999 | 404 Not Found | blocked | spec:Skills |
 | SK-11| Навык 404 | Навыка нет | Назначить скилл ID=999 | 404 Not Found | blocked | spec:Skills |
 | SK-12| Формула: exp=0 | - | Проверить прогресс | level=1, progress=0 | blocked | spec:Skills |
@@ -51,7 +51,7 @@
 | TA-1 | Создание задачи | Авторизован | POST /tasks | 201, `creator_id` берется из current_user | blocked | spec:Tasks |
 | TA-2 | Дедлайн в прошлом | - | POST /tasks deadline=вчера | 400 Bad Request | blocked | spec:Tasks |
 | TA-3 | Difficulty вне 1..5 | - | POST /tasks difficulty=6 | 422 Unprocessable Entity | blocked | spec:Tasks |
-| TA-4 | Список и фильтр status | Задачи есть | GET /tasks?status=open | Отдаются только open | blocked | spec:Tasks |
+| TA-4 | Список и фильтр status | Задачи есть | GET /tasks?status=todo | Отдаются только todo | blocked | spec:Tasks |
 | TA-5 | Фильтр assignee_id | Задачи есть | GET /tasks?assignee_id=1 | Отдаются задачи юзера | blocked | spec:Tasks |
 | TA-6 | Фильтр difficulty | Задачи есть | GET /tasks?difficulty=3 | Отдаются задачи diff=3 | blocked | spec:Tasks |
 | TA-7 | Комбинация фильтров | Задачи есть | GET /tasks с 3 фильтрами | Возвращается пересечение | blocked | spec:Tasks |
@@ -65,9 +65,11 @@
 | TA-15| Исполнитель 404 | Юзера нет | PATCH /tasks/1/assign {id:999}| 404 Not Found | blocked | spec:Tasks |
 
 ## 4. Experience (Включает У1-У6)
+Во всех кейсах с `PATCH status=done` предусловие: задача в статусе `review` и апрувнута (`PATCH /tasks/{id}/approve`); иначе API возвращает 400 (см. decisions «Workflow задач»).
+
 | ID | Название | Предусловия | Шаги | Ожидаемый результат | Статус | Ссылка |
 |---|---|---|---|---|---|---|
-| EX-1 | MVP сквозной сценарий | Задача с исп. и наградой | PATCH статус в done | Рост XP, пополнение ExperienceLog, обновление профиля | blocked | spec:Exp |
+| EX-1 | MVP сквозной сценарий | Задача с исп. и наградой, в review, апрувнута | PATCH статус в done | Рост XP, пополнение ExperienceLog, обновление профиля | blocked | spec:Exp |
 | EX-2 | PUT задает награды | - | PUT /tasks/1/skills | Награды заданы | blocked | spec:Exp |
 | EX-3 | PUT заменяет награды | Награды есть | Повторный PUT | Полная замена наград | blocked | spec:Exp |
 | EX-4 | PUT с `[]` | Награды есть | PUT /tasks/1/skills `[]` | Все награды сняты | blocked | spec:Exp |
@@ -79,12 +81,12 @@
 | EX-10| GET награды 404 | Задачи нет | GET /tasks/999/skills | 404 Not Found | blocked | spec:Exp |
 | EX-11| GET ExperienceLog | Был начислен XP | GET /users/1/experience-log | 200 OK, история начислений | blocked | spec:Exp |
 | EX-12| GET ExpLog 404 | Юзера нет | GET /users/999/experience-log| 404 Not Found | blocked | spec:Exp |
-| EX-13| **У1** done без исп. | assignee=null | PATCH status=done | 200, XP не начислен, лог пуст | blocked | decisions |
+| EX-13| **У1** done без исп. | assignee=null, задача в review, апрувнута | PATCH status=done | 200, XP не начислен, лог пуст | blocked | decisions |
 | EX-14| **У2** переназначение | Задача done | Сменить assignee_id | XP остается у старого исп. | blocked | decisions |
 | EX-15| **У3** транзакционность| - | *Руками невозможно уронить* | У3 — покрыт автотестом, ссылка на Experience-issue | pass | decisions |
 | EX-16| **У4** идемпотентность | Задача done | Повторный PATCH status=done | XP не задваивается, лог не растет | blocked | decisions |
-| EX-17| **У5** задача без наград | Наград нет | PATCH status=done | 200, XP не начисляется | blocked | decisions |
-| EX-18| **У6** нет UserSkill | Навыка у исп. нет| PATCH status=done (с наградой)| Навык появляется в профиле с XP | blocked | decisions |
+| EX-17| **У5** задача без наград | Наград нет, задача в review, апрувнута | PATCH status=done | 200, XP не начисляется | blocked | decisions |
+| EX-18| **У6** нет UserSkill | Навыка у исп. нет, задача в review, апрувнута | PATCH status=done (с наградой)| Навык появляется в профиле с XP | blocked | decisions |
 
 ## 5. Frontend
 | ID | Название | Предусловия | Шаги | Ожидаемый результат | Статус | Ссылка |

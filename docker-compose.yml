@@ -8,6 +8,11 @@ services:
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
+    # host.docker.internal -> IP хоста: нужен, когда исходящий трафик API
+    # (OpenRouter, GitHub) должен идти через прокси на хосте — задаётся
+    # переменными HTTPS_PROXY/NO_PROXY в .env (см. .env.example).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

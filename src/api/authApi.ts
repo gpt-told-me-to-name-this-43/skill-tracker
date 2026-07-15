@@ -2,21 +2,22 @@ import { apiClient } from "./client";
 
 export type User = {
   id: number;
-  name: string;
   email: string;
+  username: string;
+  role: string;
+  avatar_url: string | null;
+  position: string | null;
+  member_status: "active" | "away" | "inactive";
+  created_at: string;
 };
 
 export type LoginResponse = {
-  token: string;
-  user: User;
+  access_token: string;
+  token_type: "bearer";
 };
 
 export function login(email: string, password: string): Promise<LoginResponse> {
   return apiClient.post<LoginResponse>("/auth/login", { email, password });
-}
-
-export function logout(): Promise<void> {
-  return apiClient.post<void>("/auth/logout");
 }
 
 export function getCurrentUser(): Promise<User> {

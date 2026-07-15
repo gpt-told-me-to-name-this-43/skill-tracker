@@ -15,3 +15,6 @@ Cтруктуры данных:
 - В сервисе нет `import fastapi` — ошибки через доменные исключения
   (`NotFoundError`, `ConflictError`) из `app/services/exceptions.py`.
 - При изменении модели необходима миграция в том же PR
+- Каждая Alembic-миграция обязана иметь рабочий `downgrade`: CI job
+  `migrations-smoke` выполняет `alembic upgrade head`, а затем
+  `alembic downgrade base`.
