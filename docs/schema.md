@@ -16,7 +16,7 @@ erDiagram
 ## Сущности
 - **User** — пользователь (username, email, hashed_password, role).
 - **Skill** — справочник компетенций.
-- **UserSkill** — прогресс пользователя по навыку (experience, level). M:N User↔Skill.
+- **UserSkill** — прогресс пользователя по навыку (experience; level не хранится, вычисляется API). M:N User↔Skill.
 - **Task** — задача (status, difficulty, deadline; creator_id, assignee_id, approval).
 - **TaskSkill** — какие навыки прокачивает задача (exp_reward). M:N Task↔Skill.
 - **ExperienceLog** — журнал начислений опыта.

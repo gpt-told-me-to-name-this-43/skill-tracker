@@ -5,6 +5,7 @@ from app.main import app
 from app.models.enums import MemberStatus
 from app.models.team import Team, TeamMember
 from app.models.user import User
+from app.services.exceptions import NotFoundError
 
 
 def _user(
@@ -74,7 +75,11 @@ class FakeUserService:
         return users[offset : offset + limit]
 
     async def get_user_by_id(self, user_id: int) -> User:
-        return next(user for user in self.users if user.id == user_id)
+        # Мимикрирует реальный UserService: отсутствующий пользователь — NotFoundError.
+        user = next((user for user in self.users if user.id == user_id), None)
+        if user is None:
+            raise NotFoundError("User not found")
+        return user
 
     async def update_workspace_profile(self, user_id: int, data) -> User:
         user = await self.get_user_by_id(user_id)
@@ -116,6 +121,20 @@ async def test_list_users_omits_email_and_filters_by_member_status(client):
     assert body[0]["member_status"] == "away"
     assert body[0]["team"] == {"id": 1, "name": "QA Team"}
     assert "email" not in body[0]
+
+
+async def test_get_missing_user_returns_404(client):
+    service = FakeUserService()
+
+    async def override_user_service() -> FakeUserService:
+        return service
+
+    app.dependency_overrides[get_current_user] = _override_current_user
+    app.dependency_overrides[get_user_service] = override_user_service
+
+    resp = await client.get("/api/v1/users/999999")
+
+    assert resp.status_code == 404
 
 
 async def test_list_users_filters_by_team_id(client):

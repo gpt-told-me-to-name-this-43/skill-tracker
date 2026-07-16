@@ -94,3 +94,25 @@ async def test_update_own_name_case_change_ok():
 
     updated = await service.update(skill.id, SkillUpdate(name="Docker"))
     assert updated.name == "Docker"
+
+
+@pytest.mark.parametrize(
+    ("experience", "level", "current_level_xp", "next_level_xp", "progress"),
+    [
+        (0, 1, 0, 100, 0),
+        (50, 1, 0, 100, 50),
+        (99, 1, 0, 100, 99),
+        (100, 2, 100, 200, 0),
+        (200, 3, 200, 300, 0),
+        (250, 3, 200, 300, 50),
+    ],
+)
+def test_calculate_skill_progress_boundaries(
+    experience, level, current_level_xp, next_level_xp, progress
+):
+    result = SkillService.calculate_skill_progress(experience)
+
+    assert result.level == level
+    assert result.current_level_xp == current_level_xp
+    assert result.next_level_xp == next_level_xp
+    assert result.progress_to_next_level == progress

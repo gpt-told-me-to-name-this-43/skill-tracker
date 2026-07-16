@@ -59,6 +59,54 @@ async def test_me_without_token_returns_401(client):
     assert resp.status_code == 401
 
 
+async def test_register_normalizes_email_and_defaults_to_user_role(client):
+    payload = {**REGISTER_PAYLOAD, "email": "Dev@Example.COM"}
+    resp = await client.post("/api/v1/auth/register", json=payload)
+    assert resp.status_code == 201
+
+    data = resp.json()
+    assert data["email"] == "dev@example.com"
+    assert data["role"] == "user"
+
+
+async def test_register_duplicate_email_case_insensitive_returns_409(client):
+    resp = await client.post("/api/v1/auth/register", json=REGISTER_PAYLOAD)
+    assert resp.status_code == 201
+
+    duplicate = {
+        **REGISTER_PAYLOAD,
+        "email": REGISTER_PAYLOAD["email"].upper(),
+        "username": "another-user",
+    }
+    resp = await client.post("/api/v1/auth/register", json=duplicate)
+    assert resp.status_code == 409
+
+
+async def test_register_duplicate_username_returns_409(client):
+    resp = await client.post("/api/v1/auth/register", json=REGISTER_PAYLOAD)
+    assert resp.status_code == 201
+
+    duplicate = {**REGISTER_PAYLOAD, "email": "other@example.com"}
+    resp = await client.post("/api/v1/auth/register", json=duplicate)
+    assert resp.status_code == 409
+
+
+async def test_login_wrong_password_returns_401(client):
+    resp = await client.post("/api/v1/auth/register", json=REGISTER_PAYLOAD)
+    assert resp.status_code == 201
+
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"email": REGISTER_PAYLOAD["email"], "password": "wrong-password"},
+    )
+    assert resp.status_code == 401
+
+
+async def test_me_with_invalid_token_returns_401(client):
+    resp = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid"})
+    assert resp.status_code == 401
+
+
 async def test_register_password_over_72_bytes_returns_422(client):
     # bcrypt учитывает только первые 72 байта: более длинные пароли должны отклоняться,
     # иначе разные пароли с одинаковым 72-байтовым префиксом становятся эквивалентными.
