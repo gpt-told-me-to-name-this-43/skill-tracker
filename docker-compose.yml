@@ -3,14 +3,14 @@ services:
     build: .
     env_file: .env
     environment:
-      # Переопределяем хосты на имена сервисов — внутри compose-сети
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/app
+      # Override the hosts with the service names used inside the compose network.
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
-    # host.docker.internal -> IP хоста: нужен, когда исходящий трафик API
-    # (OpenRouter, GitHub) должен идти через прокси на хосте — задаётся
-    # переменными HTTPS_PROXY/NO_PROXY в .env (см. .env.example).
+    # host.docker.internal -> the host IP: needed when outbound traffic from the API
+    # (OpenRouter, GitHub) has to go through a proxy running on the host, configured
+    # with HTTPS_PROXY/NO_PROXY in .env (see .env.example).
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

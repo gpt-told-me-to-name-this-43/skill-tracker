@@ -10,62 +10,27 @@ concurrency:
 permissions:
   contents: read
 env:
-  PYTHON_VERSION: "3.12"
+  JAVA_VERSION: "21"
 jobs:
-  lint:
-    name: lint
+  backend-build:
+    name: backend-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-java@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "poetry"
-      - run: poetry install --no-interaction --no-root
-      - name: ruff check
-        run: poetry run ruff check .
-      - name: ruff format --check
-        run: poetry run ruff format --check .
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - name: Compile
+        working-directory: backend
+        run: ./mvnw -B -ntp -DskipTests compile
+      - name: Check formatting
+        working-directory: backend
+        run: ./mvnw -B -ntp spotless:check
 
-  migrations-smoke:
-    name: migrations-smoke
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: app_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/app_test
-      REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET: ci-test-secret-not-for-production
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "poetry"
-      - run: poetry install --no-interaction --no-root
-      - name: Alembic upgrade head (smoke на чистой БД)
-        run: poetry run alembic upgrade head
-      - name: Alembic downgrade base (smoke отката)
-        run: poetry run alembic downgrade base
-
-  test:
-    name: test
+  backend-test:
+    name: backend-test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -90,30 +55,62 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/app_test
-      REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET: ci-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-java@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "poetry"
-      - run: poetry install --no-interaction --no-root
-      - name: Применить миграции
-        run: poetry run alembic upgrade head
-      - name: pytest
-        run: poetry run pytest --cov=app --cov-report=xml
-      - name: Upload coverage report
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      # Unit tests, MockMvc contract tests and the JPA/Flyway integration tests all run
+      # against the service container above.
+      - name: Test
+        working-directory: backend
+        run: ./mvnw -B -ntp verify
+        env:
+          TEST_DATASOURCE_URL: jdbc:postgresql://localhost:5432/app_test
+          TEST_DATASOURCE_USERNAME: postgres
+          TEST_DATASOURCE_PASSWORD: postgres
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.xml
+          name: surefire-reports
+          path: backend/target/surefire-reports
           if-no-files-found: ignore
+
+  migrations-smoke:
+    name: migrations-smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      # Proves an empty database is migrated from scratch and that a second start is a no-op.
+      - name: Flyway migrate on an empty database
+        working-directory: backend
+        run: ./mvnw -B -ntp -Dtest=FlywayMigrationCompatibilityTest -DfailIfNoTests=false test
+        env:
+          TEST_DATASOURCE_URL: jdbc:postgresql://localhost:5432/app_smoke
+          TEST_DATASOURCE_USERNAME: postgres
+          TEST_DATASOURCE_PASSWORD: postgres
 
   docker-build:
     name: docker-build
@@ -121,7 +118,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build image (без публикации)
+      - name: Build image (not published)
         uses: docker/build-push-action@v6
         with:
           context: .

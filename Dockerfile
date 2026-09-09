@@ -1,24 +1,27 @@
-FROM python:3.12-slim AS builder
+# syntax=docker/dockerfile:1
 
-ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
-RUN pip install poetry==1.8.3
+FROM eclipse-temurin:21-jdk AS builder
 
+WORKDIR /build
+
+# Dependencies resolve from the POM alone, so they stay cached while only sources change.
+COPY backend/.mvn .mvn
+COPY backend/mvnw backend/pom.xml ./
+RUN ./mvnw -B -ntp dependency:go-offline
+
+COPY backend/src src
+RUN ./mvnw -B -ntp -DskipTests -Dspotless.check.skip=true package \
+    && cp target/skill-tracker-*.jar app.jar
+
+FROM eclipse-temurin:21-jre AS runtime
+
+# The API never needs root, and the upload directory is the only path it writes to.
+RUN useradd --system --create-home --uid 10001 app
 WORKDIR /app
-COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.in-project true \
-    && poetry install --only main --no-root --no-interaction
 
-FROM python:3.12-slim AS runtime
+COPY --from=builder --chown=app:app /build/app.jar app.jar
+RUN mkdir -p /app/uploads && chown -R app:app /app
 
-ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
-WORKDIR /app
-
-COPY --from=builder /app/.venv /app/.venv
-COPY alembic.ini ./
-COPY alembic ./alembic
-COPY app ./app
-COPY entrypoint.sh ./
-RUN chmod +x entrypoint.sh
-
+USER app
 EXPOSE 8000
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]

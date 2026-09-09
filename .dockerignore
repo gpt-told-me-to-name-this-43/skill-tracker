@@ -1,11 +1,20 @@
 .git
 .github
-.venv
-__pycache__
-*.pyc
-.pytest_cache
-.ruff_cache
 .env
-tests
 docs
 *.md
+
+# Frontend sources are built separately and are not part of the API image.
+/src
+/node_modules
+/dist
+/index.html
+/package.json
+/package-lock.json
+/tsconfig*.json
+/vite.config.ts
+/.oxlintrc.json
+
+# Build output and local uploads must never leak into the image.
+backend/target
+uploads
