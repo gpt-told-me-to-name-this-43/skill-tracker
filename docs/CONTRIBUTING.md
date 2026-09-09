@@ -12,9 +12,9 @@ Cтруктуры данных:
 
 ### Границы слоёв
 - В роутере нет `select` / `session` — только вызов сервиса.
-- В сервисе нет `import fastapi` — ошибки через доменные исключения
+- В сервисе нет зависимостей от Spring Web — ошибки через доменные исключения
   (`NotFoundError`, `ConflictError`) из `app/services/exceptions.py`.
 - При изменении модели необходима миграция в том же PR
-- Каждая Alembic-миграция обязана иметь рабочий `downgrade`: CI job
-  `migrations-smoke` выполняет `alembic upgrade head`, а затем
-  `alembic downgrade base`.
+- Каждая Flyway-миграция версионируется и не переписывается после мержа: CI job
+  `migrations-smoke` прогоняет миграции на чистой БД и проверяет, что существующая
+  Alembic-схема принимается через baseline без потери данных.
