@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: Skill Tracker
+  # Local runs outside Docker keep reading the same .env file the FastAPI backend used.
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/app}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # The schema belongs to Flyway; Hibernate only checks that the mapping still fits.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # A database created by the previous Alembic chain is already at V1; baselining stops Flyway
+    # from replaying the schema on top of live data, while an empty database runs V1 normally.
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: Alembic-managed schema
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8000}
+
+jwt:
+  secret: ${JWT_SECRET}
+  algorithm: ${JWT_ALGORITHM:HS256}
+  access-token-ttl-minutes: ${ACCESS_TOKEN_TTL_MINUTES:60}
+
+storage:
+  upload-dir: ${UPLOAD_DIR:uploads}
+
+github:
+  repo: ${GITHUB_REPO:gpt-told-me-to-name-this-43/skill-tracker}
+  api-url: ${GITHUB_API_URL:https://api.github.com}
+  token: ${GITHUB_TOKEN:}
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:poolside/laguna-xs-2.1:free}
+  api-url: ${OPENROUTER_API_URL:https://openrouter.ai/api/v1}
+
+springdoc:
+  api-docs:
+    path: /openapi.json
+  swagger-ui:
+    path: /docs
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

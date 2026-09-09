@@ -1,0 +1,4 @@
+# One-shot seeding mode: no web server, so the process exits once the runner finishes.
+spring:
+  main:
+    web-application-type: none
