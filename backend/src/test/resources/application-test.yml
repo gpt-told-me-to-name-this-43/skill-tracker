@@ -1,0 +1,31 @@
+jwt:
+  secret: test-secret-that-is-long-enough-for-hs256
+  algorithm: HS256
+  access-token-ttl-minutes: 60
+
+storage:
+  upload-dir: ${java.io.tmpdir}/skill-tracker-test-uploads
+
+github:
+  repo: acme/widgets
+  api-url: https://gh.test
+  token: ""
+
+openrouter:
+  api-key: ""
+  model: test/model
+  api-url: https://or.test/api/v1
+
+spring:
+  config:
+    import: optional:classpath:/does-not-exist.properties
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    root: WARN
